@@ -69,7 +69,8 @@ Other univariate imputation functions:
 \code{\link{mice.impute.polr}()},
 \code{\link{mice.impute.polyreg}()},
 \code{\link{mice.impute.quadratic}()},
-\code{\link{mice.impute.rf}()}
+\code{\link{mice.impute.rf}()},
+\code{\link{mice.impute.spcr}()}
 }
 \author{
 Shahab Jolani (University of Utrecht)

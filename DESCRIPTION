@@ -51,6 +51,7 @@ Imports:
     graphics,
     grDevices,
     lattice,
+    MLmetrics,
     methods,
     Rcpp,
     rlang,

@@ -93,7 +93,8 @@ Other univariate imputation functions:
 \code{\link{mice.impute.polyreg}()},
 \code{\link{mice.impute.quadratic}()},
 \code{\link{mice.impute.rf}()},
-\code{\link{mice.impute.ri}()}
+\code{\link{mice.impute.ri}()},
+\code{\link{mice.impute.spcr}()}
 }
 \author{
 Lisa Doove, Stef van Buuren, Elise Dusseldorp, 2012
