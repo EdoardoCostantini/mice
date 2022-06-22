@@ -15,7 +15,7 @@
 #' The method consists of the following steps:
 #' \enumerate{
 #' \item The observed part of the variable under imputation is regressed on every potential predictor (simple linear regression), and the square root of the R-squared is stored.
-#' \item All of the potential predictors returning an R-squared larger than a threshold \theta are selected as an active set of predictors.
+#' \item All of the potential predictors returning an R-squared larger than a threshold \eqn{\theta} are selected as an active set of predictors.
 #' \item `npcs` principal components are extracted from this active set.
 #' \item These principal components are used as input for a `norm.boot` univariate imputation algorithm
 #' }
@@ -59,7 +59,7 @@
 #' @export
 mice.impute.spcr <- function(y, ry, x, wy = NULL,
                              thresholds = seq(.1, .9, by = .1),
-                             npcs = 1, nfolds = 10,
+                             npcs = 1, nfolds = 5,
                              ...) {
   # Set up ---------------------------------------------------------------------
 
@@ -83,7 +83,9 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
       NULL
     }
   })
-  # TODO: what if thresholds are too high and nothing is selected?
+  # TODO: Edge cases:
+  # - what if thresholds are too high and nothing is selected?
+  # - If only one predictor is selected, extracting PCs doesn't make sense
 
   # Drop empty mods
   mods <- mods[!sapply(mods, is.null)]
@@ -96,7 +98,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
 
   # Obtain Cross-validation error
   cve_obj <- lapply(mods, function(set) {
-    .spcrCVE(dv = y, pred = x[, set], K = nfolds, part = part)
+    .spcrCVE(dv = y, pred = x[, set, drop = FALSE], K = nfolds, part = part)
   })
 
   # Extract CVEs
@@ -112,7 +114,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
 
   # Impute ---------------------------------------------------------------------
 
-  # Use traditional norm.boot machinery to obtain prediction
+  # Use traditional norm.boot machinery to obtain replacements
   imputes <- mice.impute.norm.boot(y = y, ry = ry, x = x_pcs, wy = NULL)
 
   # Return

@@ -12,7 +12,7 @@ mice.impute.spcr(
   wy = NULL,
   thresholds = seq(0.1, 0.9, by = 0.1),
   npcs = 1,
-  nfolds = 10,
+  nfolds = 5,
   ...
 )
 }
@@ -30,7 +30,7 @@ model is fitted. The \code{ry} generally distinguishes the observed
 \item{wy}{Logical vector of length \code{length(y)}. A \code{TRUE} value
 indicates locations in \code{y} for which imputations are created.}
 
-\item{thresholds}{Vector of possible values for the association-threshold on 
+\item{thresholds}{Vector of possible values for the association-threshold on
 which cross-validation will be performed.}
 
 \item{npcs}{The number of principal components to keep or the automatic method
@@ -51,25 +51,25 @@ Imputes univariate missing data using supervised principal component regression.
 The method consists of the following steps:
 \enumerate{
 \item The observed part of the variable under imputation is regressed on every potential predictor (simple linear regression), and the square root of the R-squared is stored.
-\item All of the potential predictors returning an R-squared larger than a threshold \theta are selected as an active set of predictors.
+\item All of the potential predictors returning an R-squared larger than a threshold \eqn{\theta} are selected as an active set of predictors.
 \item `npcs` principal components are extracted from this active set.
 \item These principal components are used as input for a `norm.boot` univariate imputation algorithm
 }
 
 K-fold cross-validation is used to select a threshold value among a user-defined
 vector of possible values.
-For every given value in the range [0, 1], all predictors with an R-square larger 
+For every given value in the range [0, 1], all predictors with an R-square larger
 than the threshold form an active set of predictors.
 Then, `npcs` PCs are extracted from each active set and used to predict the dependent variable.
 The active set giving best validation MSE for `npcs` PCs is kept.
 
 This function allows the specification of a custom value for `npcs`.
 In a dataset where few predictors are associated with the variables under imputation,
-the requested number of PCs may be larger than the number of predictors 
+the requested number of PCs may be larger than the number of predictors
 selected for a given cross-validated threshold.
 If this is the case, the maximum number of PCs supported is used.
 This means that the predictors selected based on the cross-validation threshold
-are projected on a new space where they are independent but no dimensionality 
+are projected on a new space where they are independent but no dimensionality
 reduction is performed.
 
 The user can specify a \code{predictorMatrix} in the \code{mice} call
