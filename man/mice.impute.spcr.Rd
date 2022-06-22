@@ -30,7 +30,8 @@ model is fitted. The \code{ry} generally distinguishes the observed
 \item{wy}{Logical vector of length \code{length(y)}. A \code{TRUE} value
 indicates locations in \code{y} for which imputations are created.}
 
-\item{thresholds}{The number of folds for the cross-validation of the association-threshold.}
+\item{thresholds}{Vector of possible values for the association-threshold on 
+which cross-validation will be performed.}
 
 \item{npcs}{The number of principal components to keep or the automatic method
 to use for decision.}
@@ -40,7 +41,7 @@ to use for decision.}
 \item{...}{Other named arguments.}
 }
 \value{
-Vector with imputed data, same type as \code{y}, and of length
+Vector with imputed data, the same type as \code{y}, and of length
 \code{sum(wy)}
 }
 \description{
@@ -49,11 +50,28 @@ Imputes univariate missing data using supervised principal component regression.
 \details{
 The method consists of the following steps:
 \enumerate{
-\item The observed part of the variable under imputation is regressed on every possible predictor (simple linear regressino), the square root of the R-squared is stored
-\item The range of thresholds is used to select competing models based on the obtained R-square from the previous step. K-fold cross-validation is used to select the model giving the lowest MSE.
-\item `npcs` principal components are extracted from the subset of predictors making up the best model in the previous point
-\item These principal components are used as input for a norm.boot univariate imputation algorithm
+\item The observed part of the variable under imputation is regressed on every potential predictor (simple linear regression), and the square root of the R-squared is stored.
+\item All of the potential predictors returning an R-squared larger than a threshold \theta are selected as an active set of predictors.
+\item `npcs` principal components are extracted from this active set.
+\item These principal components are used as input for a `norm.boot` univariate imputation algorithm
 }
+
+K-fold cross-validation is used to select a threshold value among a user-defined
+vector of possible values.
+For every given value in the range [0, 1], all predictors with an R-square larger 
+than the threshold form an active set of predictors.
+Then, `npcs` PCs are extracted from each active set and used to predict the dependent variable.
+The active set giving best validation MSE for `npcs` PCs is kept.
+
+This function allows the specification of a custom value for `npcs`.
+In a dataset where few predictors are associated with the variables under imputation,
+the requested number of PCs may be larger than the number of predictors 
+selected for a given cross-validated threshold.
+If this is the case, the maximum number of PCs supported is used.
+This means that the predictors selected based on the cross-validation threshold
+are projected on a new space where they are independent but no dimensionality 
+reduction is performed.
+
 The user can specify a \code{predictorMatrix} in the \code{mice} call
 to define which predictors are provided to this univariate imputation method.
 Therefore, users may force the exclusion of a predictor from a given

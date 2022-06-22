@@ -4,16 +4,16 @@
 \alias{.spcrCVE}
 \title{Computes the cross-validation error}
 \usage{
-.spcrCVE(dv, pred, K, part, npcs = 1)
+.spcrCVE(dv, pred, part, K = 10, npcs = 1)
 }
 \arguments{
 \item{dv}{Vector of observed values on the dv.}
 
 \item{pred}{Matrix of complete covariates for a version of a model.}
 
-\item{K}{Unit vector (double) indicating the number of folds for cross-validation.}
-
 \item{part}{Vector indicating how to partition data in K-folds.}
+
+\item{K}{Unit vector (double) indicating the number of folds for cross-validation.}
 
 \item{npcs}{Unit vector (double) indicating the number of components to retain.}
 }
