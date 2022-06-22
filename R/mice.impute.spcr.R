@@ -7,7 +7,7 @@
 #' @param npcs The number of principal components to keep or the automatic method
 #' to use for decision.
 #' @param nfolds The number of folds for the cross-validation of the association-threshold.
-#' @param thresholds Vector of possible values for the association-threshold on 
+#' @param thresholds Vector of possible values for the association-threshold on
 #' which cross-validation will be performed.
 #' @return Vector with imputed data, the same type as \code{y}, and of length
 #' \code{sum(wy)}
@@ -19,23 +19,23 @@
 #' \item `npcs` principal components are extracted from this active set.
 #' \item These principal components are used as input for a `norm.boot` univariate imputation algorithm
 #' }
-#' 
+#'
 #' K-fold cross-validation is used to select a threshold value among a user-defined
 #' vector of possible values.
-#' For every given value in the range [0, 1], all predictors with an R-square larger 
+#' For every given value in the range [0, 1], all predictors with an R-square larger
 #' than the threshold form an active set of predictors.
 #' Then, `npcs` PCs are extracted from each active set and used to predict the dependent variable.
 #' The active set giving best validation MSE for `npcs` PCs is kept.
-#' 
+#'
 #' This function allows the specification of a custom value for `npcs`.
 #' In a dataset where few predictors are associated with the variables under imputation,
-#' the requested number of PCs may be larger than the number of predictors 
+#' the requested number of PCs may be larger than the number of predictors
 #' selected for a given cross-validated threshold.
 #' If this is the case, the maximum number of PCs supported is used.
 #' This means that the predictors selected based on the cross-validation threshold
-#' are projected on a new space where they are independent but no dimensionality 
+#' are projected on a new space where they are independent but no dimensionality
 #' reduction is performed.
-#' 
+#'
 #' The user can specify a \code{predictorMatrix} in the \code{mice} call
 #' to define which predictors are provided to this univariate imputation method.
 #' Therefore, users may force the exclusion of a predictor from a given
@@ -46,7 +46,7 @@
 #'
 #' The method is based on the supervised principal component prediction approach proposed
 #' by Bair et. al. (2006).
-#' 
+#'
 #' @author Edoardo Costantini, 2022
 #' @references
 #'
@@ -68,7 +68,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   # Cross-validate threshold ---------------------------------------------------
 
   # Fit univariate regression models (efficient correlation coefficient)
-  r2_vecs <- apply(x, 2, function (j){
+  r2_vecs <- apply(x, 2, function(j) {
     sqrt(summary(lm(y ~ j))$r.squared)
   })
 
@@ -92,7 +92,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   mods <- unique(mods)
 
   # Create a partition vector:
-  part <- sample(rep(1 : nfolds, ceiling(nrow(x) / nfolds)))[1 : nrow(x)]
+  part <- sample(rep(1:nfolds, ceiling(nrow(x) / nfolds)))[1:nrow(x)]
 
   # Obtain Cross-validation error
   cve_obj <- lapply(mods, function(set) {
@@ -105,7 +105,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   # Select predictors giving PCR model with smallest error
   pcs <- cve_obj[[which.min(cve)]]$pca_out$x
   x_pcs <- pcs[, 1:(min(ncol(pcs), npcs))]
-  
+
   # Compute explained variance by each principal component
   pc_var_exp <- prop.table(cve_obj[[which.min(cve)]]$pca_out$sdev^2)
   pc_tot_exp <- sum(pc_var_exp[1:npcs])
@@ -129,56 +129,59 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
 #' @param npcs Unit vector (double) indicating the number of components to retain.
 #' @export
 .spcrCVE <- function(dv, pred, part, K = 10, npcs = 1) {
-    # Input examples
-    # dv   = mtcars[, 1]
-    # pred = mtcars[, -1]
-    # K    = 10
-    # npcs = 1
-    # part = sample(rep(1 : K, ceiling(nrow(mtcars) / K)))[1 : nrow(mtcars)]
+  # Input examples
+  # dv   = mtcars[, 1]
+  # pred = mtcars[, -1]
+  # K    = 10
+  # npcs = 1
+  # part = sample(rep(1 : K, ceiling(nrow(mtcars) / K)))[1 : nrow(mtcars)]
 
-    # Install packages on demand for this function
-    install.on.demand("MLmetrics")
+  # Install packages on demand for this function
+  install.on.demand("MLmetrics")
 
-    # Extract PCs from the predictors involved in this model
-    pcr_out <- stats::prcomp(pred,
-                             center = TRUE,
-                             scale = TRUE)
+  # Extract PCs from the predictors involved in this model
+  pcr_out <- stats::prcomp(pred,
+    center = TRUE,
+    scale = TRUE
+  )
 
-    # Extract PCs from this set of predictors
-    x_pcs <- pcr_out$x[, 1:npcs, drop = FALSE]
+  # Extract PCs from this set of predictors
+  x_pcs <- pcr_out$x[, 1:npcs, drop = FALSE]
 
-    # Put them together
-    data <- data.frame(y = dv, x_pcs)
+  # Put them together
+  data <- data.frame(y = dv, x_pcs)
 
-    # Create model
-    model <- paste0("y ~ ", paste0(colnames(x_pcs), collapse = " + "))
+  # Create model
+  model <- paste0("y ~ ", paste0(colnames(x_pcs), collapse = " + "))
 
-    # Create an empty storing object
-    mse <- rep(NA, K)
+  # Create an empty storing object
+  mse <- rep(NA, K)
 
-    # Loop over K repititions:
-    for(k in 1 : K) {
-        # Partition data:
-        train <- data[part != k, ]
-        valid <- data[part == k, ]
+  # Loop over K repititions:
+  for (k in 1:K) {
+    # Partition data:
+    train <- data[part != k, ]
+    valid <- data[part == k, ]
 
-        # Fit model, generate predictions, and save the MSE:
-        fit    <- lm(model, data = train)
+    # Fit model, generate predictions, and save the MSE:
+    fit <- lm(model, data = train)
 
-        # Generate predictions
-        dv_hat   <- predict(fit, newdata = valid)
+    # Generate predictions
+    dv_hat <- predict(fit, newdata = valid)
 
-        # Save MSE
-        mse[k] <- MLmetrics::MSE(y_pred = dv_hat,
-                                 y_true = dv[part == k])
-    }
+    # Save MSE
+    mse[k] <- MLmetrics::MSE(
+      y_pred = dv_hat,
+      y_true = dv[part == k]
+    )
+  }
 
-    # Return the CVE:
-    cve <- sum((table(part) / length(part)) * mse)
+  # Return the CVE:
+  cve <- sum((table(part) / length(part)) * mse)
 
-    # Return
-    return(list(
-      cve = cve,
-      pca_out = pcr_out
-    ))
+  # Return
+  return(list(
+    cve = cve,
+    pca_out = pcr_out
+  ))
 }
