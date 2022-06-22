@@ -63,21 +63,21 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
                              ...) {
   # Set up ---------------------------------------------------------------------
 
-  # Body
   if (is.null(wy)) wy <- !ry
 
   # Cross-validate threshold ---------------------------------------------------
+
   # Fit univariate regression models (efficient correlation coefficient)
   r2_vecs <- apply(x, 2, function (j){
     sqrt(summary(lm(y ~ j))$r.squared)
   })
 
-  # Cross-validate threshold ---------------------------------------------------
-
   # Predictors based on different thrasholds
-  mods  <- lapply(thresholds, function (r2) {
-    mod <- x[, r2_vecs >= r2, drop = FALSE]
-    if(ncol(mod) >= 1){
+  mods <- lapply(thresholds, function(r2) {
+    # r2 <- thresholds[1]
+    mod <- colnames(x)[r2_vecs >= r2]
+    # mod <- x[, r2_vecs >= r2, drop = FALSE]
+    if (length(mod) >= 1) {
       mod
     } else {
       NULL
@@ -88,26 +88,27 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   # Drop empty mods
   mods <- mods[!sapply(mods, is.null)]
 
+  # Drop possible duplicated mods
+  mods <- unique(mods)
+
   # Create a partition vector:
   part <- sample(rep(1 : nfolds, ceiling(nrow(x) / nfolds)))[1 : nrow(x)]
 
   # Obtain Cross-validation error
-  cve <- sapply(mods, .spcrCVE, dv = y, K = nfolds, part = part)
+  cve_obj <- lapply(mods, function(set) {
+    .spcrCVE(dv = y, pred = x[, set], K = nfolds, part = part)
+  })
 
-  # Select predictors giving model with smallest error
-  x_sub <- mods[[which.min(cve)]]
+  # Extract CVEs
+  cve <- sapply(cve_obj, "[[", 1)
 
-  # Extract PCs from the predictors involved in this model
-  pcr_out <- stats::prcomp(x_sub,
-                           center = TRUE,
-                           scale = TRUE)
-
-  # Compute Explained Variance by each principal component
-  pc_var_exp <- prop.table(pcr_out$sdev^2)
-
-  # Keep PCs based on npcs object
-  x_pcs <- pcr_out$x[, 1:npcs, drop = FALSE]
-  pca_exp <- sum(pc_var_exp[1:npcs])
+  # Select predictors giving PCR model with smallest error
+  pcs <- cve_obj[[which.min(cve)]]$pca_out$x
+  x_pcs <- pcs[, 1:(min(ncol(pcs), npcs))]
+  
+  # Compute explained variance by each principal component
+  pc_var_exp <- prop.table(cve_obj[[which.min(cve)]]$pca_out$sdev^2)
+  pc_tot_exp <- sum(pc_var_exp[1:npcs])
 
   # Impute ---------------------------------------------------------------------
 
@@ -127,11 +128,12 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
 #' @param part Vector indicating how to partition data in K-folds.
 #' @param npcs Unit vector (double) indicating the number of components to retain.
 #' @export
-.spcrCVE <- function(dv, pred, K, part, npcs = 1) {
+.spcrCVE <- function(dv, pred, part, K = 10, npcs = 1) {
     # Input examples
     # dv   = mtcars[, 1]
     # pred = mtcars[, -1]
     # K    = 10
+    # npcs = 1
     # part = sample(rep(1 : K, ceiling(nrow(mtcars) / K)))[1 : nrow(mtcars)]
 
     # Install packages on demand for this function
@@ -151,12 +153,11 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
     # Create model
     model <- paste0("y ~ ", paste0(colnames(x_pcs), collapse = " + "))
 
-    # Create empty storing object
+    # Create an empty storing object
     mse <- rep(NA, K)
 
     # Loop over K repititions:
     for(k in 1 : K) {
-
         # Partition data:
         train <- data[part != k, ]
         valid <- data[part == k, ]
@@ -170,9 +171,14 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
         # Save MSE
         mse[k] <- MLmetrics::MSE(y_pred = dv_hat,
                                  y_true = dv[part == k])
-
     }
 
     # Return the CVE:
-    sum((table(part) / length(part)) * mse)
+    cve <- sum((table(part) / length(part)) * mse)
+
+    # Return
+    return(list(
+      cve = cve,
+      pca_out = pcr_out
+    ))
 }
