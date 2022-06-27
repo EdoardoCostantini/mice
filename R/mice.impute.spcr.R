@@ -120,6 +120,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
 
   # Use traditional norm.boot machinery to obtain replacements
   imputes <- mice.impute.norm.boot(y = y, ry = ry, x = x_pcs, wy = NULL)
+  # TODO: it would be cool to have this flexible to any sub method (pmm, log reg, etc.)
 
   # Return
   return(imputes)
