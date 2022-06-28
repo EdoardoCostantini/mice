@@ -58,7 +58,9 @@ Imports:
     stats,
     tidyr,
     utils,
-    withr (>= 2.4.0)
+    withr (>= 2.4.0),
+    PCovR,
+    pls
 Suggests:
     broom.mixed,
     decor,

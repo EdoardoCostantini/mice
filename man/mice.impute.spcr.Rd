@@ -50,10 +50,14 @@ Imputes univariate missing data using supervised principal component regression.
 \details{
 The method consists of the following steps:
 \enumerate{
-\item The observed part of the variable under imputation is regressed on every potential predictor (simple linear regression), and the square root of the R-squared is stored.
-\item All of the potential predictors returning an R-squared larger than a threshold \eqn{\theta} are selected as an active set of predictors.
+\item The observed part of the variable under imputation is regressed on 
+every potential predictor (simple linear regression), and the square root of 
+the R-squared is stored.
+\item All of the potential predictors returning an R-squared larger than a 
+threshold \eqn{\theta} are selected as an active set of predictors.
 \item `npcs` principal components are extracted from this active set.
-\item These principal components are used as input for a `norm.boot` univariate imputation algorithm
+\item These principal components are used as input for a `norm.boot` 
+univariate imputation algorithm
 }
 
 K-fold cross-validation is used to select a threshold value among a user-defined
@@ -106,6 +110,9 @@ Other univariate imputation functions:
 \code{\link{mice.impute.norm.nob}()},
 \code{\link{mice.impute.norm.predict}()},
 \code{\link{mice.impute.norm}()},
+\code{\link{mice.impute.pcovr}()},
+\code{\link{mice.impute.pcr}()},
+\code{\link{mice.impute.pls}()},
 \code{\link{mice.impute.pmm}()},
 \code{\link{mice.impute.polr}()},
 \code{\link{mice.impute.polyreg}()},
