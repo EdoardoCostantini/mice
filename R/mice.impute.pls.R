@@ -1,6 +1,6 @@
 #' Imputation by partial least square regression
 #'
-#' Imputes univariate missing data by using patial least square regression.
+#' Imputes univariate missing data by using partial least square regression.
 #'
 #' @aliases mice.impute.pls pls
 #' @inheritParams mice.impute.norm.boot
@@ -8,8 +8,7 @@
 #' @return Vector with imputed data, same type as \code{y}, and of length
 #' \code{sum(wy)}
 #' @details
-#' Partial least square regression ... 
-#' Imputation is performed according to the following algorithm:
+#' Imputation of \code{y} by PLS. The procedure is as follows:
 #' \enumerate{
 #' \item A bootstrap sample of the observed part of the data is taken
 #' \item PLSR is estimated on this sample for a given number of latent variables (nlvs).
@@ -58,11 +57,11 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, ...) {
     
     # Predict new data
     pls_pred <- as.matrix(
-        predict(pls_out, x[!ry, , drop = FALSE], ncomp = nlvs)
+        predict(pls_out, newdata = x[!ry, , drop = FALSE], ncomp = nlvs)
     )
 
     # Compute residual standard error (sd of residuals with df as denominator) for PLS
-    res_ss <- sum(resid(pls_out)^2)
+    res_ss <- sum(stats::resid(pls_out)^2)
     res_df <- nrow(dotxobs) - nlvs - 1
     sigma <- sqrt(res_ss / res_df)
 
