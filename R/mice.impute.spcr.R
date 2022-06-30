@@ -39,6 +39,11 @@
 #' This means that the predictors selected based on the cross-validation threshold
 #' are projected on a new space where they are independent but no dimensionality
 #' reduction is performed.
+#' Similarly, it may happen that for a given threshold value, fewer predictors 
+#' are kept than the number of PCs requested by the user.
+#' In this case, the maximum number of npcs supported is used in the cross-validation procedure.
+#' It may happen that a PCR model doing no dimensionality reduction, but only 
+#' removing collinearity is selected.
 #'
 #' The user can specify a \code{predictorMatrix} in the \code{mice} call
 #' to define which predictors are provided to this univariate imputation method.
@@ -63,26 +68,31 @@
 #' @export
 mice.impute.spcr <- function(y, ry, x, wy = NULL,
                              thresholds = seq(.1, .9, by = .1),
-                             npcs = 1, nfolds = 5,
+                             npcs = 1, 
+                             nfolds = 5,
                              ...) {
   # Set up ---------------------------------------------------------------------
 
   if (is.null(wy)) wy <- !ry
 
+  # Take bootstrap sample for model uncertainty
+  n1 <- sum(ry)
+  s <- sample(n1, n1, replace = TRUE)
+  dotxobs <- x[ry, , drop = FALSE][s, ]
+  dotyobs <- y[ry][s]
+
   # Cross-validate threshold ---------------------------------------------------
 
-  # Fit univariate regression models (efficient correlation coefficient)
-  r2_vecs <- apply(x, 2, function(j) {
+  # Obtain R-squared for all simple linear regression models
+  r2_vec <- apply(x, 2, function(j) {
     sqrt(summary(lm(y ~ j))$r.squared)
   })
 
-  # Predictors based on different thrasholds
-  mods <- lapply(thresholds, function(r2) {
-    # r2 <- thresholds[1]
-    mod <- colnames(x)[r2_vecs >= r2]
-    # mod <- x[, r2_vecs >= r2, drop = FALSE]
-    if (length(mod) >= 1) {
-      mod
+  # Predictors based on different thresholds
+  preds_list <- lapply(thresholds, function(m) {
+    preds <- colnames(x)[r2_vec >= m]
+    if (length(preds) >= 1) {
+      preds
     } else {
       NULL
     }
@@ -91,36 +101,61 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   # - what if thresholds are too high and nothing is selected?
   # - If only one predictor is selected, extracting PCs doesn't make sense
 
-  # Drop empty mods
-  mods <- mods[!sapply(mods, is.null)]
+  # Drop empty preds_list slots
+  preds_list <- preds_list[!sapply(preds_list, is.null)]
 
-  # Drop possible duplicated mods
-  mods <- unique(mods)
+  # Drop possible duplicated preds_list slots
+  preds_list <- unique(preds_list)
 
-  # Create a partition vector:
-  part <- sample(rep(1:nfolds, ceiling(nrow(x) / nfolds)))[1:nrow(x)]
+  # Create a partition vector
+  part <- sample(rep(1:nfolds, ceiling(nrow(dotxobs) / nfolds)))[1:nrow(dotxobs)]
 
   # Obtain Cross-validation error
-  cve_obj <- lapply(mods, function(set) {
-    .spcrCVE(dv = y, pred = x[, set, drop = FALSE], K = nfolds, part = part)
+  cve_obj <- lapply(preds_list, function(set) {
+    .spcrCVE(
+      dv = dotyobs,
+      pred = dotxobs[, set, drop = FALSE],
+      K = nfolds,
+      part = part,
+      npcs = npcs
+      # TODO: need to make a decision on what to do when less predictors 
+      #       are slected than principal components are requeted
+      #       For example, when only 3 predictor are selected but 5 
+      #       components are asked for.
+      #       One idea is to order all of the predicotrs based on their R2 measure,
+      #       then select all the ones that are bigger than some threshold,
+      #       if not enough predictors are slected for the required number of pcs,
+      #       then select enough to get to this number.
+    )
   })
 
   # Extract CVEs
   cve <- sapply(cve_obj, "[[", 1)
+  preds_active <- preds_list[[which.min(cve)]]
 
-  # Select predictors giving PCR model with smallest error
-  pcs <- cve_obj[[which.min(cve)]]$pca_out$x
-  x_pcs <- pcs[, 1:(min(ncol(pcs), npcs))]
+  # Train PCR on dotxobs sample
+  pcr_out <- pls::pcr(
+    dotyobs ~ dotxobs[, preds_active, drop = FALSE],
+    ncomp = npcs,
+    scale = TRUE,
+    center = TRUE,
+    validation = "none"
+  )
 
-  # Compute explained variance by each principal component
-  pc_var_exp <- prop.table(cve_obj[[which.min(cve)]]$pca_out$sdev^2)
-  pc_tot_exp <- sum(pc_var_exp[1:npcs])
+  # Define sigma
+  RSS <- sqrt(sum(pcr_out$residuals^2))
+  sigma <- RSS / (n1 - npcs - 1)
 
-  # Impute ---------------------------------------------------------------------
+  # Get prediction on (active) missing part
+  yhat <- predict(
+    object = pcr_out,
+    newdata = x[wy, preds_active, drop = FALSE],
+    ncomp = npcs,
+    type = "response"
+  )
 
-  # Use traditional norm.boot machinery to obtain replacements
-  imputes <- mice.impute.norm.boot(y = y, ry = ry, x = x_pcs, wy = NULL)
-  # TODO: it would be cool to have this flexible to any sub method (pmm, log reg, etc.)
+  # Add noise for imputation uncertainty
+  imputes <- yhat + rnorm(sum(wy)) * sigma
 
   # Return
   return(imputes)
@@ -140,55 +175,54 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   # dv   = mtcars[, 1]
   # pred = mtcars[, -1]
   # K    = 10
-  # npcs = 1
+  # npcs = 5
   # part = sample(rep(1 : K, ceiling(nrow(mtcars) / K)))[1 : nrow(mtcars)]
 
   # Install packages on demand for this function
   install.on.demand("MLmetrics")
 
-  # Extract PCs from the predictors involved in this model
-  pcr_out <- stats::prcomp(pred,
-    center = TRUE,
-    scale = TRUE
-  )
-
-  # Extract PCs from this set of predictors
-  x_pcs <- pcr_out$x[, 1:npcs, drop = FALSE]
-
-  # Put them together
-  data <- data.frame(y = dv, x_pcs)
-
-  # Create model
-  model <- paste0("y ~ ", paste0(colnames(x_pcs), collapse = " + "))
+  # Define a safe number of pcs
+  q <- min(npcs, ncol(pred))
 
   # Create an empty storing object
   mse <- rep(NA, K)
 
-  # Loop over K repititions:
+  # Loop over K folds
   for (k in 1:K) {
+
     # Partition data:
-    train <- data[part != k, ]
-    valid <- data[part == k, ]
+    Xtr <- pred[part != k, , drop = FALSE]
+    Xva <- pred[part == k, , drop = FALSE]
+    ytr <- dv[part != k]
+    yva <- dv[part == k]
 
-    # Fit model, generate predictions, and save the MSE:
-    fit <- lm(model, data = train)
+    # Calibrate PCR on training datest
+    pcr_out <- pls::pcr(
+      ytr ~ Xtr,
+      ncomp = q,
+      scale = TRUE,
+      center = TRUE,
+      validation = "none"
+    )
 
-    # Generate predictions
-    dv_hat <- predict(fit, newdata = valid)
+    # Get prediction on validation data set
+    yva_hat <- predict(pcr_out, newdata = Xva, ncomp = q, type = "response")
 
     # Save MSE
     mse[k] <- MLmetrics::MSE(
-      y_pred = dv_hat,
-      y_true = dv[part == k]
+      y_pred = yva_hat,
+      y_true = yva
     )
+
   }
 
   # Return the CVE:
-  cve <- sum((table(part) / length(part)) * mse)
+  cve <- sum(mse * (table(part) / length(part)))
 
   # Return
   return(list(
     cve = cve,
-    pca_out = pcr_out
+    npcs = q
   ))
+
 }
