@@ -118,14 +118,6 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
       K = nfolds,
       part = part,
       npcs = npcs
-      # TODO: need to make a decision on what to do when less predictors 
-      #       are slected than principal components are requeted
-      #       For example, when only 3 predictor are selected but 5 
-      #       components are asked for.
-      #       One idea is to order all of the predicotrs based on their R2 measure,
-      #       then select all the ones that are bigger than some threshold,
-      #       if not enough predictors are slected for the required number of pcs,
-      #       then select enough to get to this number.
     )
   })
 
