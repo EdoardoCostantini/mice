@@ -20,36 +20,34 @@
 #' @export
 mice.impute.pcr <- function(y, ry, x, wy = NULL, npcs = 1L, ...) {
 
-    # Set up -------------------------------------------------------------------
-
+    # Set up
+    install.on.demand("pls", ...)
     if (is.null(wy)) wy <- !ry
 
-    # Extract PCs --------------------------------------------------------------
+    # Take bootstrap sample for model uncertainty
+    n1 <- sum(ry)
+    s <- sample(n1, n1, replace = TRUE)
+    dotxobs <- x[ry, , drop = FALSE][s, ]
+    dotyobs <- y[ry][s]
 
-    # PCA
-    pcr_out <- stats::prcomp(x,
+    # Train PCR on dotxobs sample
+    pcr_out <- pls::pcr(
+        dotyobs ~ dotxobs,
+        ncomp = npcs,
+        scale = TRUE,
         center = TRUE,
-        scale = TRUE
+        validation = "none"
     )
 
-    # Compute Explained Variance by each principal component
-    pc_var_exp <- prop.table(pcr_out$sdev^2)
+    # Define sigma
+    RSS <- sqrt(sum(pcr_out$residuals^2))
+    sigma <- RSS / (n1 - npcs - 1)
 
-    # Keep PCs based on npcs object
-    if (npcs >= 1) {
-        # npcs as NOT-a-proportion
-        pcs_keep <- 1:npcs
-    } else {
-        # npcs as a proportion
-        pcs_keep <- cumsum(pc_var_exp) <= npcs
-    }
-    x_pcs <- pcr_out$x[, pcs_keep, drop = FALSE]
-    pca_exp <- sum(pc_var_exp[pcs_keep])
+    # Get prediction on missing part
+    yhat <- predict(pcr_out, newdata = x[wy, ], ncomp = npcs, type = "response")
 
-    # Impute -------------------------------------------------------------------
-
-    # Use traditional norm.boot machinery to obtain replacements
-    imputes <- mice.impute.norm.boot(y = y, ry = ry, x = x_pcs, wy = NULL)
+    # Add noise for imputation uncertainty
+    imputes <- yhat + rnorm(sum(wy)) * sigma
 
     # Return
     return(imputes)
