@@ -33,18 +33,28 @@ Vector with imputed data, same type as \code{y}, and of length
 Imputes univariate missing data by using principal covariates regression (PCovR).
 }
 \details{
-Imputation of \code{y} by PCovR. The procedure is as follows:
+Imputation of \code{y} by principal covariates regression (De Jong and Kiers, 1992).
+The method consists of the following steps:
 \enumerate{
-\item Draws a bootstrap sample from \code{x[ry,]} and \code{y[ry]}
-\item Computes an optimal \code{alpha} value for the PCovR model on the basis 
-of maximum likelihood principles as described in Vervloet et. al. (2015).
-\item Estimates W and Py from the PCovR model fitted to the bootsrap samples of \code{x[ry,]} and \code{y[ry]}
-\item Predicts y values based on \code{x[wy,]} and adds noise.
+\item For a given \code{y} variable under imputation, draw a bootstrap version y*
+with replacement from the observed cases \code{y[ry]}, and stores in x* the
+corresponding values from \code{x[ry, ]}.
+\item Compute an optimal \code{alpha} value for the PCovR model on the basis 
+of maximum likelihood principles described in Vervloet et. al. (2015).
+\item Estimate W and Py from the PCovR model fitted to y* and x*
+\item Predict y values based on \code{x[wy,]} and add noise.
 }
+
+Residual degrees of freedom are estimated by using the Krylov representation
+described by Kramer and Sugiyama (2011) as implemented in the \code{plsdof} 
+package.
 }
 \references{
 De Jong, S., & Kiers, H. A. (1992). Principal covariates regression: part I. 
 Theory. Chemometrics and Intelligent Laboratory Systems, 14(1-3), 155-164.
+
+Krämer, N., & Sugiyama, M. (2011). The degrees of freedom of partial least
+squares regression. Journal of the American Statistical Association, 106(494), 697-705.
 
 Vervloet, M., Kiers, H. A., Van den Noortgate, W., & Ceulemans, E. (2015). 
 PCovR: An R package for principal covariates regression. Journal of Statistical Software, 65, 1-14.

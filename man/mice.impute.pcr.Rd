@@ -21,7 +21,7 @@ model is fitted. The \code{ry} generally distinguishes the observed
 \item{wy}{Logical vector of length \code{length(y)}. A \code{TRUE} value
 indicates locations in \code{y} for which imputations are created.}
 
-\item{npcs}{The number of principal components to extract for PC regression.}
+\item{npcs}{The number of principal components to extract in the PC regression.}
 
 \item{...}{Other named arguments.}
 }
@@ -33,11 +33,24 @@ Vector with imputed data, same type as \code{y}, and of length
 Imputes univariate missing data by extracting PCs from all potential auxiliary variables.
 }
 \details{
-Extracts components from x and uses them as predictors in a regular call of
-norm.boot().
+Imputation of \code{y} by principal component regression (Jolliffe, 1986, p. 168).
+The method consists of the following steps:
+\enumerate{
+\item For a given \code{y} variable under imputation, draw a bootstrap version y*
+with replacement from the observed cases \code{y[ry]}, and stores in x* the
+corresponding values from \code{x[ry, ]}.
+\item Fit a PC regression with y* as the outcome, and x* as predictors using 
+\code{npcs} components.
+\item Calculate the estimated residual standard error \code{sigma} based on the residuals 
+obtained from the PC regression and \code{npcs - 1} degrees of freedom.
+\item Obtain predicted values for \code{y} based on the fitted PC regression 
+and the new data \code{x[wy, ]} 
+\item Obtain imputations by adding noise scaled by \code{sigma} to these
+predictions.
+}
 }
 \references{
-Jolliffe, I. (2002) Principal Component Analysis (2nd ed). Springer.
+Jolliffe, I. (1986) Principal Component Analysis. Springer.
 }
 \seealso{
 Other univariate imputation functions: 

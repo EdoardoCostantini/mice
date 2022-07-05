@@ -33,27 +33,29 @@ Vector with imputed data, same type as \code{y}, and of length
 Imputes univariate missing data by using partial least square regression.
 }
 \details{
-Imputation of \code{y} by PLS. The procedure is as follows:
+Imputation of \code{y} by partial least square regression (Wold, 1975).
+The method consists of the following steps:
 \enumerate{
-\item A bootstrap sample of the observed part of the data is taken
+\item For a given \code{y} variable under imputation, draw a bootstrap version y*
+with replacement from the observed cases \code{y[ry]}, and stores in x* the
+corresponding values from \code{x[ry, ]}.
 \item PLSR is estimated on this sample for a given number of latent variables (nlvs).
-\item Based on this PLSR model, predictions on the new data x[!ry, ]
+\item Based on this PLSR model, predictions on the new data x[wy, ] are returned
 \item Imputations are then obtained by adding noise to these predictions.
 }
 
 Noise is added by sampling from a standard normal distribution rescaled based 
-on the residuals standard error of the PLSR.
-The residual degrees of freedom (df) are computed according to a naive approach 
-(n - nlvs - 1).
-Future developments of this function could include one of the more elaborate 
-approaches to estimating df described in Kramer and Sugiyama (2011).
+on the residuals standard error of the PLSR model.
+The residual degrees of freedom are computed based on the Krylov representation 
+described by Kramer and Sugiyama (2011) as implemented in the R package \code{plsdof} 
+(Krämer and Sugiyama, 2011).
 }
 \references{
 Krämer, N., & Sugiyama, M. (2011). The degrees of freedom of partial least 
 squares regression. Journal of the American Statistical Association, 106(494), 697-705.
 
-Wehrens, R., & Mevik, B. H. (2007). The pls package: principal component and 
-partial least squares regression in R.
+Wold, H. (1975). Path models with latent variables: The NIPALS approach. 
+In Quantitative sociology (pp. 307-357). Academic Press.
 }
 \seealso{
 Other univariate imputation functions: 

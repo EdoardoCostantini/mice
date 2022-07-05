@@ -11,7 +11,7 @@ mice.impute.spcr(
   x,
   wy = NULL,
   thresholds = seq(0.1, 0.9, by = 0.1),
-  npcs = 1,
+  npcs = 7,
   nfolds = 5,
   ...
 )
@@ -48,24 +48,34 @@ Vector with imputed data, the same type as \code{y}, and of length
 Imputes univariate missing data using supervised principal component regression.
 }
 \details{
+Imputation of \code{y} by supervised principal component regression (Bair, 2006).
 The method consists of the following steps:
 \enumerate{
-\item The observed part of the variable under imputation is regressed on 
-every potential predictor (simple linear regression), and the square root of 
-the R-squared is stored.
 \item All of the potential predictors returning an R-squared larger than a 
 threshold \eqn{\theta} are selected as an active set of predictors.
-\item `npcs` principal components are extracted from this active set.
-\item These principal components are used as input for a `norm.boot` 
-univariate imputation algorithm
+\item For a given \code{y} variable under imputation, draw a bootstrap version y*
+with replacement from the observed cases \code{y[ry]}, and stores in x* the
+corresponding values from \code{x[ry, ]}.
+\item Regress \code{y*} on every potential predictor (simple linear 
+regression), and store their R-squared.
+\item Fit a PC regression with \code{y*} as the outcome, the predictors in 
+\code{x*} whose simple regression R-square exceeds a defined threshold,
+and \code{npcs} components.
+\item Calculate the estimated residual standard error \code{sigma} based on the residuals
+obtained from the PC regression and \code{npcs - 1} degrees of freedom.
+\item Obtain predicted values for \code{y} based on the fitted PC regression
+and the new data \code{x[wy, ]}
+\item Obtain imputations by adding noise scaled by \code{sigma} to these
+predictions.
 }
 
 K-fold cross-validation is used to select a threshold value among a user-defined
-vector of possible values.
-For every given value in the range [0, 1], all predictors with an R-square larger
+grid of values.
+For every provided threshold in the range [0, 1], all predictors with an R-square larger
 than the threshold form an active set of predictors.
-Then, `npcs` PCs are extracted from each active set and used to predict the dependent variable.
-The active set giving best validation MSE for `npcs` PCs is kept.
+Then, \code{npcs} PCs are extracted from each active set and used to predict 
+the dependent variable.
+The active set giving best K-fold validation MSE is kept.
 
 This function allows the specification of a custom value for `npcs`.
 In a dataset where few predictors are associated with the variables under imputation,
@@ -73,8 +83,11 @@ the requested number of PCs may be larger than the number of predictors
 selected for a given cross-validated threshold.
 If this is the case, the maximum number of PCs supported is used.
 This means that the predictors selected based on the cross-validation threshold
-are projected on a new space where they are independent but no dimensionality
+are projected on a new space where they are independent, but no dimensionality
 reduction is performed.
+Similarly, it may happen that for a given threshold value, fewer predictors 
+are kept than the number of PCs requested by the user.
+In this case, the maximum number of npcs supported is used in the cross-validation procedure.
 
 The user can specify a \code{predictorMatrix} in the \code{mice} call
 to define which predictors are provided to this univariate imputation method.
@@ -83,9 +96,6 @@ imputation model by speficing a \code{0} entry.
 However, a non-zero entry does not guarantee the variable will be used,
 as this decision is ultimately made based on the k-fold cross-validation
 procedure.
-
-The method is based on the supervised principal component prediction approach proposed
-by Bair et. al. (2006).
 }
 \references{
 Bair, E., Hastie, T., Paul, D., & Tibshirani, R. (2006). Prediction by
