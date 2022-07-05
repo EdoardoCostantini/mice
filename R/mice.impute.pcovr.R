@@ -8,13 +8,16 @@
 #' @return Vector with imputed data, same type as \code{y}, and of length
 #' \code{sum(wy)}
 #' @details
-#' Imputation of \code{y} by PCovR. The procedure is as follows:
+#' Imputation of \code{y} by principal covariates regression (De Jong and Kiers, 1992).
+#' The method consists of the following steps:
 #' \enumerate{
-#' \item Draws a bootstrap sample from \code{x[ry,]} and \code{y[ry]}
-#' \item Computes an optimal \code{alpha} value for the PCovR model on the basis 
-#' of maximum likelihood principles as described in Vervloet et. al. (2015).
-#' \item Estimates W and Py from the PCovR model fitted to the bootsrap samples of \code{x[ry,]} and \code{y[ry]}
-#' \item Predicts y values based on \code{x[wy,]} and adds noise.
+#' \item For a given \code{y} variable under imputation, draw a bootstrap version y*
+#' with replacement from the observed cases \code{y[ry]}, and stores in x* the
+#' corresponding values from \code{x[ry, ]}.
+#' \item Compute an optimal \code{alpha} value for the PCovR model on the basis 
+#' of maximum likelihood principles described in Vervloet et. al. (2015).
+#' \item Estimate W and Py from the PCovR model fitted to y* and x*
+#' \item Predict y values based on \code{x[wy,]} and add noise.
 #' }
 #' 
 #' Residual degrees of freedom are estimated by using the Krylov representation
@@ -41,16 +44,20 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, ...) {
     # Set up
     install.on.demand("PCovR", ...)
     if (is.null(wy)) wy <- !ry
-
-    # Scale X
-    x_sc <- scale(x, center = TRUE, scale = TRUE)
-
+    
     # Take bootstrap sample for model uncertainty
     n1 <- sum(ry)
     s <- sample(n1, n1, replace = TRUE)
-    dotxobs <- x_sc[ry, , drop = FALSE][s, ]
+    dotxobs <- x[ry, , drop = FALSE][s, ]
     dotyobs <- y[ry][s] - mean(y[ry][s])
-    xmis <- x_sc[wy, ]
+    xmis <- x[wy, ]
+
+    # Scale Xs
+    dotxobs <- scale(dotxobs, center = TRUE, scale = TRUE)
+    xmis <- scale(x[wy, ],
+        center = attributes(dotxobs)$`scaled:center`,
+        scale = attributes(dotxobs)$`scaled:scale`
+    )
     
     # Compute error ratio components
     lm_mod <- lm(dotyobs ~ -1 + dotxobs)
@@ -88,7 +95,7 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, ...) {
     y_hat <- mean(y[ry]) + xmis %*% W[, 1:npcs, drop = FALSE] %*% Py[1:npcs, , drop = FALSE]
 
     # Compute residual standard error (sd of residuals with df as the denominator) for PLS
-    DoFs <- dofPLS(
+    DoFs <- .dofPLS(
         X = dotxobs,
         y = dotyobs,
         TT = Ts,
@@ -107,4 +114,82 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, ...) {
 
     # Return
     return(imputes)
+}
+
+# Degrees of freedom for supervised derived input models
+.dofPLS <- function(X, y, TT, Yhat, m = ncol(X), DoF.max = ncol(X) + 1){
+    # Example inputs
+    # X = scale(mtcars[, -1])
+    # y = mtcars[, 1]
+    # m = ncol(X)
+    # DoF.max = m + 1
+    # TT <- linear.pls.fit(X, y, m, DoF.max = DoF.max)$TT # normalizezs PC scores
+    # Yhat <- linear.pls.fit(X, y, m, DoF.max = DoF.max)$Yhat[, 2:(m + 1)]
+
+    # Body
+    n <- nrow(X)
+
+    # Scale data
+    mean.X <- apply(X, 2, mean)
+    sd.X <- apply(X, 2, sd)
+    sd.X[sd.X == 0] <- 1
+    X <- X - rep(1, nrow(X)) %*% t(mean.X)
+    X <- X / (rep(1, nrow(X)) %*% t(sd.X))
+    K <- X %*% t(X)
+
+    # pls.dof
+    DoF.max <- DoF.max - 1
+    TK <- matrix(, m, m)
+    KY <- krylov(K, K %*% y, m)
+    lambda <- eigen(K)$values
+    tr.K <- vector(length = m)
+    for (i in 1:m) {
+        tr.K[i] <- sum(lambda^i)
+    }
+    BB <- t(TT) %*% KY
+    BB[row(BB) > col(BB)] <- 0
+    b <- t(TT) %*% y
+    DoF <- vector(length = m)
+    Binv <- backsolve(BB, diag(m))
+    tkt <- rep(0, m)
+    ykv <- rep(0, m)
+    KjT <- array(dim = c(m, n, m))
+    dummy <- TT
+    for (i in 1:m) {
+        dummy <- K %*% dummy
+        KjT[i, , ] <- dummy
+    }
+    trace.term <- rep(0, m)
+
+    for (i in 1:m) {
+        Binvi <- Binv[1:i, 1:i, drop = FALSE]
+        ci <- Binvi %*% b[1:i]
+        Vi <- TT[, 1:i, drop = FALSE] %*% t(Binvi)
+        trace.term[i] <- sum(ci * tr.K[1:i])
+        ri <- y - Yhat[, i]
+        for (j in 1:i) {
+            KjTj <- KjT[j, , ]
+            tkt[i] <- tkt[i] + ci[j] * 
+                sum(diag(t(TT[, 1:i, drop = FALSE]) %*% KjTj[, 1:i, drop = FALSE]))
+            ri <- K %*% ri
+            ykv[i] <- ykv[i] + sum(ri * Vi[, j])
+        }
+    }
+
+    DoF <- trace.term + 1:m - tkt + ykv
+
+    DoF[DoF > DoF.max] <- DoF.max
+    DoF <- c(0, DoF) + 1
+    DoF
+
+}
+
+krylov <- function(A, b, m) {
+    K <- matrix(, length(b), m)
+    dummy <- b
+    for (i in 1:m) {
+        K[, i] <- dummy
+        dummy <- A %*% dummy
+    }
+    return(K)
 }
