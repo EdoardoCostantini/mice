@@ -12,24 +12,34 @@
 #' @return Vector with imputed data, the same type as \code{y}, and of length
 #' \code{sum(wy)}
 #' @details
+#' Imputation of \code{y} by supervised principal component regression (Bair, 2006).
 #' The method consists of the following steps:
 #' \enumerate{
-#' \item The observed part of the variable under imputation is regressed on 
-#' every potential predictor (simple linear regression), and the square root of 
-#' the R-squared is stored.
 #' \item All of the potential predictors returning an R-squared larger than a 
 #' threshold \eqn{\theta} are selected as an active set of predictors.
-#' \item `npcs` principal components are extracted from this active set.
-#' \item These principal components are used as input for a `norm.boot` 
-#' univariate imputation algorithm
+#' \item For a given \code{y} variable under imputation, draw a bootstrap version y*
+#' with replacement from the observed cases \code{y[ry]}, and stores in x* the
+#' corresponding values from \code{x[ry, ]}.
+#' \item Regress \code{y*} on every potential predictor (simple linear 
+#' regression), and store their R-squared.
+#' \item Fit a PC regression with \code{y*} as the outcome, the predictors in 
+#' \code{x*} whose simple regression R-square exceeds a defined threshold,
+#' and \code{npcs} components.
+#' \item Calculate the estimated residual standard error \code{sigma} based on the residuals
+#' obtained from the PC regression and \code{npcs - 1} degrees of freedom.
+#' \item Obtain predicted values for \code{y} based on the fitted PC regression
+#' and the new data \code{x[wy, ]}
+#' \item Obtain imputations by adding noise scaled by \code{sigma} to these
+#' predictions.
 #' }
 #'
 #' K-fold cross-validation is used to select a threshold value among a user-defined
-#' vector of possible values.
-#' For every given value in the range [0, 1], all predictors with an R-square larger
+#' grid of values.
+#' For every provided threshold in the range [0, 1], all predictors with an R-square larger
 #' than the threshold form an active set of predictors.
-#' Then, `npcs` PCs are extracted from each active set and used to predict the dependent variable.
-#' The active set giving best validation MSE for `npcs` PCs is kept.
+#' Then, \code{npcs} PCs are extracted from each active set and used to predict 
+#' the dependent variable.
+#' The active set giving best K-fold validation MSE is kept.
 #'
 #' This function allows the specification of a custom value for `npcs`.
 #' In a dataset where few predictors are associated with the variables under imputation,
@@ -37,13 +47,11 @@
 #' selected for a given cross-validated threshold.
 #' If this is the case, the maximum number of PCs supported is used.
 #' This means that the predictors selected based on the cross-validation threshold
-#' are projected on a new space where they are independent but no dimensionality
+#' are projected on a new space where they are independent, but no dimensionality
 #' reduction is performed.
 #' Similarly, it may happen that for a given threshold value, fewer predictors 
 #' are kept than the number of PCs requested by the user.
 #' In this case, the maximum number of npcs supported is used in the cross-validation procedure.
-#' It may happen that a PCR model doing no dimensionality reduction, but only 
-#' removing collinearity is selected.
 #'
 #' The user can specify a \code{predictorMatrix} in the \code{mice} call
 #' to define which predictors are provided to this univariate imputation method.
@@ -52,9 +60,6 @@
 #' However, a non-zero entry does not guarantee the variable will be used,
 #' as this decision is ultimately made based on the k-fold cross-validation
 #' procedure.
-#'
-#' The method is based on the supervised principal component prediction approach proposed
-#' by Bair et. al. (2006).
 #'
 #' @author Edoardo Costantini, 2022
 #' @references
@@ -68,7 +73,7 @@
 #' @export
 mice.impute.spcr <- function(y, ry, x, wy = NULL,
                              thresholds = seq(.1, .9, by = .1),
-                             npcs = 1, 
+                             npcs = 7, 
                              nfolds = 5,
                              ...) {
   # Set up ---------------------------------------------------------------------
@@ -99,8 +104,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   })
   # TODO: Edge cases:
   # - what if thresholds are too high and nothing is selected?
-  # - If only one predictor is selected, extracting PCs doesn't make sense
-
+  
   # Drop empty preds_list slots
   preds_list <- preds_list[!sapply(preds_list, is.null)]
 
@@ -124,11 +128,12 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   # Extract CVEs
   cve <- sapply(cve_obj, "[[", 1)
   preds_active <- preds_list[[which.min(cve)]]
+  npcs_active <- min(npcs, length(preds_active))
 
   # Train PCR on dotxobs sample
   pcr_out <- pls::pcr(
     dotyobs ~ dotxobs[, preds_active, drop = FALSE],
-    ncomp = npcs,
+    ncomp = npcs_active,
     scale = TRUE,
     center = TRUE,
     validation = "none"
@@ -136,13 +141,13 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
 
   # Define sigma
   RSS <- sqrt(sum(pcr_out$residuals^2))
-  sigma <- RSS / (n1 - npcs - 1)
+  sigma <- RSS / (n1 - npcs_active - 1)
 
   # Get prediction on (active) missing part
   yhat <- predict(
     object = pcr_out,
     newdata = x[wy, preds_active, drop = FALSE],
-    ncomp = npcs,
+    ncomp = npcs_active,
     type = "response"
   )
 
