@@ -73,7 +73,7 @@
 #' @export
 mice.impute.spcr <- function(y, ry, x, wy = NULL,
                              thresholds = seq(.1, .9, by = .1),
-                             npcs = 7, 
+                             npcs = 1, 
                              nfolds = 5,
                              ...) {
   # Set up ---------------------------------------------------------------------
