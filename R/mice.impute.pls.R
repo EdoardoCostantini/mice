@@ -5,7 +5,7 @@
 #' @aliases mice.impute.pls pls
 #' @inheritParams mice.impute.norm.boot
 #' @param nlvs The number of latent variables to consider in the PLS regression.
-#' @param DoF The method to compute the degrees of freedom, etiher \code{"naive"}, or \code{"kramer"}.
+#' @param DoF The method to compute the degrees of freedom, either \code{"naive"}, or \code{"kramer"}.
 #' @return Vector with imputed data, same type as \code{y}, and of length
 #' \code{sum(wy)}
 #' @details
@@ -24,7 +24,7 @@
 #' on the residuals standard error of the PLSR model.
 #' The residual degrees of freedom are computed based on the Krylov representation 
 #' described by Kramer and Sugiyama (2011) as implemented in the R package \code{plsdof} 
-#' (Krämer and Sugiyama, 2011) or in the naive approach (n - nlvs - 1).
+#' (Krämer and Sugiyama, 2011), or with the naive approach (n - nlvs - 1).
 #' 
 #' @author Edoardo Costantini, 2022
 #' @references
