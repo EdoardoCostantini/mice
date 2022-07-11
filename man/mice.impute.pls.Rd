@@ -5,7 +5,7 @@
 \alias{pls}
 \title{Imputation by partial least square regression}
 \usage{
-mice.impute.pls(y, ry, x, wy = NULL, nlvs = 1L, ...)
+mice.impute.pls(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
 }
 \arguments{
 \item{y}{Vector to be imputed}
@@ -22,6 +22,8 @@ model is fitted. The \code{ry} generally distinguishes the observed
 indicates locations in \code{y} for which imputations are created.}
 
 \item{nlvs}{The number of latent variables to consider in the PLS regression.}
+
+\item{DoF}{The method to compute the degrees of freedom, either \code{"naive"}, or \code{"kramer"}.}
 
 \item{...}{Other named arguments.}
 }
@@ -48,7 +50,7 @@ Noise is added by sampling from a standard normal distribution rescaled based
 on the residuals standard error of the PLSR model.
 The residual degrees of freedom are computed based on the Krylov representation 
 described by Kramer and Sugiyama (2011) as implemented in the R package \code{plsdof} 
-(Krämer and Sugiyama, 2011).
+(Krämer and Sugiyama, 2011), or with the naive approach (n - nlvs - 1).
 }
 \references{
 Krämer, N., & Sugiyama, M. (2011). The degrees of freedom of partial least 

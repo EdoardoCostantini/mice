@@ -40,7 +40,7 @@
 #' @family univariate imputation functions
 #' @keywords datagen
 #' @export
-mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "naive", ...) {
+mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ...) {
 
     # Set up
     install.on.demand("PCovR", ...)
@@ -98,20 +98,18 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "naive", ...
         res_df <- nrow(dotxobs) - npcs - 1
     }
     if (DoF == "kramer") {
-        # Extract fitted values for all numbers of pcs up untill npcs
-        Yhat <- sapply(1:ncol(dotxobs), function(j){
-            mean(y[ry]) + dotxobs %*% W[, 1:j, drop = FALSE] %*% Py[1:j, , drop = FALSE]
-        })
+        # Extract fitted values for all numbers of pcs
+        Yhat <- mean(y[ry]) + dotxobs %*% W[, 1:npcs, drop = FALSE] %*% Py[1:npcs, , drop = FALSE]
+
         # Compute DoFs
-        DoFs <- .dofPLS(
+        DoF_plsr <- .dofPLS(
             X = dotxobs,
             y = dotyobs,
+            q = npcs,
             TT = Ts,
-            Yhat = Yhat,
-            m = ncol(dotxobs),
-            DoF.max = ncol(dotxobs) + 1
+            Yhat = Yhat
         )
-        res_df <- nrow(dotxobs) - DoFs[npcs + 1]
+        res_df <- nrow(dotxobs) - DoF_plsr
     }
 
     # Compute sigma    

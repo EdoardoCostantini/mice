@@ -38,7 +38,7 @@
 #' @family univariate imputation functions
 #' @keywords datagen
 #' @export
-mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) {
+mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...) {
 
     # Set up    
     install.on.demand("plsdof", "pls", ...)
@@ -64,7 +64,7 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) 
     )
 
     # Compute residual sum of squares
-    res_ss <- sum((resid(pls_out)[, , nlvs])^2)
+    res_ss <- sum((stats::resid(pls_out)[, , nlvs])^2)
 
     # Compute degrees of freedom
     if(DoF == "naive"){
@@ -72,19 +72,17 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) 
     }
     if(DoF == "kramer"){
         # Extract fitted values for all numbers of pcs
-        Yhat <- sapply(1:ncol(dotxobs), function(j) {
-            predict(pls_out, ncomp = j)
-        })
+        Yhat <- predict(pls_out, ncomp = nlvs)
+
         # Compute DoFs
         DoF_plsr <- .dofPLS(
             X = dotxobs,
             y = dotyobs,
+            q = nlvs,
             TT = apply(pls::scores(pls_out), 2, function(j) j / sqrt(sum(j^2))),
-            Yhat = Yhat,
-            m = ncol(dotxobs),
-            DoF.max = ncol(dotxobs) + 1
+            Yhat = Yhat
         )
-        res_df <- nrow(dotxobs) - DoF_plsr[nlvs + 1]
+        res_df <- nrow(dotxobs) - DoF_plsr
     }
 
     # Compute sigma
@@ -98,17 +96,20 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) 
 }
 
 # Degrees of freedom for supervised derived input models
-.dofPLS <- function(X, y, TT, Yhat, m = ncol(X), DoF.max = ncol(X) + 1){
+.dofPLS <- function(X, y, q = 1, TT, Yhat) {
     # Example inputs
     # X = scale(mtcars[, -1])
     # y = mtcars[, 1]
     # m = ncol(X)
     # DoF.max = m + 1
     # TT <- linear.pls.fit(X, y, m, DoF.max = DoF.max)$TT # normalizezs PC scores
-    # Yhat <- linear.pls.fit(X, y, m, DoF.max = DoF.max)$Yhat[, 2:(m + 1)]
+    # q <- 3 # desired component / latent variable
+    # Yhat <- linear.pls.fit(X, y, m, DoF.max = DoF.max)$Yhat[, (q + 1)]
 
     # Body
     n <- nrow(X)
+    m <- ncol(X)
+    DoF.max <- ncol(X) + 1
 
     # Scale data
     mean.X <- apply(X, 2, mean)
@@ -132,37 +133,33 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) 
     b <- t(TT) %*% y
     DoF <- vector(length = m)
     Binv <- backsolve(BB, diag(m))
-    tkt <- rep(0, m)
-    ykv <- rep(0, m)
-    KjT <- array(dim = c(m, n, m))
+    tkt <- 0
+    ykv <- 0
+    KjT <- array(dim = c(q, n, m))
     dummy <- TT
-    for (i in 1:m) {
+    for (i in 1:q) {
         dummy <- K %*% dummy
         KjT[i, , ] <- dummy
     }
-    trace.term <- rep(0, m)
+    trace.term <- 0
 
-    for (i in 1:m) {
-        Binvi <- Binv[1:i, 1:i, drop = FALSE]
-        ci <- Binvi %*% b[1:i]
-        Vi <- TT[, 1:i, drop = FALSE] %*% t(Binvi)
-        trace.term[i] <- sum(ci * tr.K[1:i])
-        ri <- y - Yhat[, i]
-        for (j in 1:i) {
-            KjTj <- KjT[j, , ]
-            tkt[i] <- tkt[i] + ci[j] * 
-                sum(diag(t(TT[, 1:i, drop = FALSE]) %*% KjTj[, 1:i, drop = FALSE]))
-            ri <- K %*% ri
-            ykv[i] <- ykv[i] + sum(ri * Vi[, j])
-        }
+    Binvi <- Binv[1:q, 1:q, drop = FALSE]
+    ci <- Binvi %*% b[1:q]
+    Vi <- TT[, 1:q, drop = FALSE] %*% t(Binvi)
+    trace.term <- sum(ci * tr.K[1:q])
+    ri <- y - Yhat
+    for (j in 1:q) {
+        KjTj <- KjT[j, , ]
+        tkt <- tkt + ci[j] * sum(diag((t(TT[, 1:q, drop = FALSE]) %*%
+            KjTj[, 1:q, drop = FALSE])))
+        ri <- K %*% ri
+        ykv <- ykv + sum(ri * Vi[, j])
     }
 
-    DoF <- trace.term + 1:m - tkt + ykv
-
-    DoF[DoF > DoF.max] <- DoF.max
-    DoF <- c(0, DoF) + 1
+    DoF <- trace.term + q - tkt + ykv
+    DoF <- ifelse(DoF > DoF.max, DoF.max, DoF)
+    DoF <- DoF + 1
     DoF
-
 }
 
 krylov <- function(A, b, m) {

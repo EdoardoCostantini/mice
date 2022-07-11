@@ -5,7 +5,7 @@
 \alias{pcovr}
 \title{Imputation by principal covariates regression}
 \usage{
-mice.impute.pcovr(y, ry, x, wy = NULL, npcs = 1L, ...)
+mice.impute.pcovr(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ...)
 }
 \arguments{
 \item{y}{Vector to be imputed}
@@ -22,6 +22,8 @@ model is fitted. The \code{ry} generally distinguishes the observed
 indicates locations in \code{y} for which imputations are created.}
 
 \item{npcs}{The number of principal components to extract for PC regression.}
+
+\item{DoF}{The method to compute the degrees of freedom, either \code{"naive"}, or \code{"kramer"}.}
 
 \item{...}{Other named arguments.}
 }
@@ -47,7 +49,7 @@ of maximum likelihood principles described in Vervloet et. al. (2015).
 
 Residual degrees of freedom are estimated by using the Krylov representation
 described by Kramer and Sugiyama (2011) as implemented in the \code{plsdof} 
-package.
+package, or with the naive approach (n - npcs - 1).
 }
 \references{
 De Jong, S., & Kiers, H. A. (1992). Principal covariates regression: part I. 
