@@ -83,24 +83,19 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ..
     Hx <- dotxobs %*% solve(t(dotxobs) %*% dotxobs) %*% t(dotxobs)
     G <- alpha * dotxobs %*% t(dotxobs) / sum(dotxobs^2) + (1 - alpha) * Hx %*% dotyobs %*% t(dotyobs) %*% Hx / sum(dotyobs^2)
     EG <- eigen(G) # eigen-decomposition of matrix
-    Ts <- EG$vectors [, 1:ncol(dotxobs), drop = FALSE]
-    W <- solve(t(dotxobs) %*% dotxobs) %*% t(dotxobs) %*% Ts
+    Ts <- EG$vectors[, 1:ncol(dotxobs), drop = FALSE]
+    W <- solve(t(dotxobs) %*% dotxobs) %*% t(dotxobs) %*% Ts[, 1:npcs, drop = FALSE]
     Py <- t(W) %*% t(dotxobs) %*% dotyobs
     
-    # Predict new observations
-    y_hat <- mean(y[ry]) + xmis %*% W[, 1:npcs, drop = FALSE] %*% Py[1:npcs, , drop = FALSE]
-
-    # Compute residual sum of squares
-    res_ss <- sum((y[ry] - mean(y[ry]) + dotxobs %*% W %*% Py)^2)
+    # Compute the residual sum of squares
+    Yhat <- mean(y[ry][s]) + dotxobs %*% W %*% Py # fitted values
+    res_ss <- sum((y[ry][s] - Yhat)^2)
 
     # Compute degrees of freedom
     if (DoF == "naive") {
         res_df <- nrow(dotxobs) - npcs - 1
     }
     if (DoF == "kramer") {
-        # Extract fitted values for all numbers of pcs
-        Yhat <- mean(y[ry]) + dotxobs %*% W[, 1:npcs, drop = FALSE] %*% Py[1:npcs, , drop = FALSE]
-
         # Compute DoFs
         DoF_plsr <- .dofPLS(
             X = dotxobs,
@@ -114,6 +109,9 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ..
 
     # Compute sigma    
     sigma <- sqrt(res_ss / res_df)
+
+    # Predict new observations
+    y_hat <- mean(y[ry][s]) + xmis %*% W %*% Py
 
     # Add noise to make imputations
     imputes <- y_hat + rnorm(sum(wy)) * sigma
