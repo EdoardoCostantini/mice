@@ -58,14 +58,6 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
         validation = "none",
     )
 
-    # Predict new data
-    pls_pred <- as.matrix(
-        predict(pls_out, newdata = x[!ry, , drop = FALSE], ncomp = nlvs)
-    )
-
-    # Compute residual sum of squares
-    res_ss <- sum((stats::resid(pls_out)[, , nlvs])^2)
-
     # Compute degrees of freedom
     if(DoF == "naive"){
         res_df <- nrow(dotxobs) - nlvs - 1
@@ -85,8 +77,16 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
         res_df <- nrow(dotxobs) - DoF_plsr
     }
 
+    # Compute residual sum of squares
+    res_ss <- sum((stats::resid(pls_out)[, , nlvs])^2)
+
     # Compute sigma
     sigma <- sqrt(res_ss / res_df)
+
+    # Predict new data
+    pls_pred <- as.matrix(
+        predict(pls_out, newdata = x[!ry, , drop = FALSE], ncomp = nlvs)
+    )
 
     # Add noise for imputation uncertainty
     imputes <- pls_pred + rnorm(sum(wy)) * sigma
