@@ -12,7 +12,7 @@ mice.impute.spcr(
   wy = NULL,
   thresholds = seq(0.1, 0.9, by = 0.1),
   npcs = 1,
-  nfolds = 5,
+  nfolds = 10,
   ...
 )
 }

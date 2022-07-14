@@ -72,9 +72,9 @@
 #' @keywords imputation
 #' @export
 mice.impute.spcr <- function(y, ry, x, wy = NULL,
-                             thresholds = seq(.1, .9, by = .1),
+                             thresholds = seq(0.1, .9, by = .1),
                              npcs = 1, 
-                             nfolds = 5,
+                             nfolds = 10,
                              ...) {
   # Set up ---------------------------------------------------------------------
 
@@ -93,8 +93,8 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
     sqrt(summary(lm(y ~ j))$r.squared)
   })
 
-  # Predictors based on different thresholds
-  preds_list <- lapply(thresholds, function(m) {
+  # DEfine predictor groups (pred groups) based on different thresholds
+  pred_groups <- lapply(thresholds, function(m) {
     preds <- colnames(x)[r2_vec >= m]
     if (length(preds) >= 1) {
       preds
@@ -102,20 +102,40 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
       NULL
     }
   })
-  # TODO: Edge cases:
-  # - what if thresholds are too high and nothing is selected?
-  
-  # Drop empty preds_list slots
-  preds_list <- preds_list[!sapply(preds_list, is.null)]
 
-  # Drop possible duplicated preds_list slots
-  preds_list <- unique(preds_list)
+  # If thresholds used lead only to empty pred groups, say so
+  if(all(sapply(pred_groups, is.null)) == TRUE){
+    stop(
+      paste0(
+        "The threshold values used are too high. Try using a lower range."
+      )
+    )
+  }
+  
+  # Drop empty pred_groups slots
+  pred_groups <- pred_groups[!sapply(pred_groups, is.null)]
+
+  # Drop possible duplicated pred_groups slots
+  pred_groups <- unique(pred_groups)
+
+  # Drop preds groups that are smaller than required npcs
+  pred_groups <- pred_groups[sapply(pred_groups, length) >= npcs]
+
+  # If there is no pred group with enough predictors for the required npcs, say so
+  if(length(pred_groups) == 0){
+    stop(
+      paste0(
+        "There is no threshold value that can select enough predictors to extract ",
+        npcs, " PCs. Try using a smaller npcs or lower thresholds."
+      )
+    )
+  }
 
   # Create a partition vector
   part <- sample(rep(1:nfolds, ceiling(nrow(dotxobs) / nfolds)))[1:nrow(dotxobs)]
 
   # Obtain Cross-validation error
-  cve_obj <- lapply(preds_list, function(set) {
+  cve_obj <- lapply(pred_groups, function(set) {
     .spcrCVE(
       dv = dotyobs,
       pred = dotxobs[, set, drop = FALSE],
@@ -127,13 +147,12 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
 
   # Extract CVEs
   cve <- sapply(cve_obj, "[[", 1)
-  preds_active <- preds_list[[which.min(cve)]]
-  npcs_active <- min(npcs, length(preds_active))
+  preds_active <- pred_groups[[which.min(cve)]]
 
   # Train PCR on dotxobs sample
   pcr_out <- pls::pcr(
     dotyobs ~ dotxobs[, preds_active, drop = FALSE],
-    ncomp = npcs_active,
+    ncomp = npcs,
     scale = TRUE,
     center = TRUE,
     validation = "none"
@@ -141,13 +160,13 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
 
   # Define sigma
   RSS <- sqrt(sum(pcr_out$residuals^2))
-  sigma <- RSS / (n1 - npcs_active - 1)
+  sigma <- RSS / (n1 - npcs - 1)
 
   # Get prediction on (active) missing part
   yhat <- predict(
     object = pcr_out,
     newdata = x[wy, preds_active, drop = FALSE],
-    ncomp = npcs_active,
+    ncomp = npcs,
     type = "response"
   )
 
