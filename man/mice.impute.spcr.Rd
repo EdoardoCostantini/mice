@@ -10,7 +10,7 @@ mice.impute.spcr(
   ry,
   x,
   wy = NULL,
-  thresholds = seq(0.1, 0.9, by = 0.1),
+  theta = seq(0.1, 0.9, by = 0.1),
   npcs = 1,
   nfolds = 10,
   ...
@@ -30,7 +30,7 @@ model is fitted. The \code{ry} generally distinguishes the observed
 \item{wy}{Logical vector of length \code{length(y)}. A \code{TRUE} value
 indicates locations in \code{y} for which imputations are created.}
 
-\item{thresholds}{Vector of possible values for the association-threshold on
+\item{theta}{Vector of possible values for the association-threshold on
 which cross-validation will be performed.}
 
 \item{npcs}{The number of principal components to keep or the automatic method

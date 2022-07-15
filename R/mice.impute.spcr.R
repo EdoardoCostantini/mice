@@ -7,7 +7,7 @@
 #' @param npcs The number of principal components to keep or the automatic method
 #' to use for decision.
 #' @param nfolds The number of folds for the cross-validation of the association-threshold.
-#' @param thresholds Vector of possible values for the association-threshold on
+#' @param theta Vector of possible values for the association-threshold on
 #' which cross-validation will be performed.
 #' @return Vector with imputed data, the same type as \code{y}, and of length
 #' \code{sum(wy)}
@@ -72,7 +72,7 @@
 #' @keywords imputation
 #' @export
 mice.impute.spcr <- function(y, ry, x, wy = NULL,
-                             thresholds = seq(0.1, .9, by = .1),
+                             theta = seq(0.1, .9, by = .1),
                              npcs = 1, 
                              nfolds = 10,
                              ...) {
@@ -93,8 +93,8 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
     sqrt(summary(lm(y ~ j))$r.squared)
   })
 
-  # DEfine predictor groups (pred groups) based on different thresholds
-  pred_groups <- lapply(thresholds, function(m) {
+  # DEfine predictor groups (pred groups) based on different theta
+  pred_groups <- lapply(theta, function(m) {
     preds <- colnames(x)[r2_vec >= m]
     if (length(preds) >= 1) {
       preds
@@ -103,7 +103,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
     }
   })
 
-  # If thresholds used lead only to empty pred groups, say so
+  # If theta used lead only to empty pred groups, say so
   if(all(sapply(pred_groups, is.null)) == TRUE){
     stop(
       paste0(
@@ -126,7 +126,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
     stop(
       paste0(
         "There is no threshold value that can select enough predictors to extract ",
-        npcs, " PCs. Try using a smaller npcs or lower thresholds."
+        npcs, " PCs. Try using a smaller npcs or lower theta."
       )
     )
   }
