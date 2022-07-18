@@ -75,6 +75,14 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
             Yhat = Yhat
         )
         res_df <- nrow(dotxobs) - DoF_plsr
+        # If the computation fails, say so
+        if(is.na(res_df) | is.nan(res_df)){
+            stop(
+              paste0(
+                "Could not compute DoF. Try using a smaller npcs or DoF naive computation."
+              )
+            )
+        }
     }
 
     # Compute residual sum of squares
