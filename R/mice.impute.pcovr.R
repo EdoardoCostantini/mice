@@ -80,13 +80,16 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ..
     alpha <- sum(dotxobs^2) / (sum(dotxobs^2) + sum(dotyobs^2) * erx / ery)
 
     # Estiamte PCovR on observed data
-    Hx <- dotxobs %*% solve(t(dotxobs) %*% dotxobs) %*% t(dotxobs)
-    G <- alpha * dotxobs %*% t(dotxobs) / sum(dotxobs^2) + (1 - alpha) * Hx %*% dotyobs %*% t(dotyobs) %*% Hx / sum(dotyobs^2)
-    EG <- eigen(G) # eigen-decomposition of matrix
-    Ts <- EG$vectors[, 1:ncol(dotxobs), drop = FALSE]
-    W <- solve(t(dotxobs) %*% dotxobs) %*% t(dotxobs) %*% Ts[, 1:npcs, drop = FALSE]
-    Py <- t(W) %*% t(dotxobs) %*% dotyobs
-    
+    PCovR_out <- PCovR::pcovr_est(X = dotxobs,
+                                  Y = dotyobs,
+                                  r = ncol(dotxobs),
+                                  a = alpha,
+                                  cross = FALSE)
+
+    Ts <- PCovR_out$Te
+    W <- PCovR_out$W[, 1:npcs, drop = FALSE]
+    Py <- PCovR_out$Py[1:npcs]
+
     # Compute the residual sum of squares
     Yhat <- mean(y[ry][s]) + dotxobs %*% W %*% Py # fitted values
     res_ss <- sum((y[ry][s] - Yhat)^2)
