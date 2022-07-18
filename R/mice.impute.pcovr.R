@@ -51,7 +51,6 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ..
     s <- sample(n1, n1, replace = TRUE)
     dotxobs <- x[ry, , drop = FALSE][s, ]
     dotyobs <- y[ry][s] - mean(y[ry][s])
-    xmis <- x[wy, ]
 
     # Scale Xs
     dotxobs <- scale(dotxobs, center = TRUE, scale = TRUE)
@@ -99,7 +98,6 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ..
         res_df <- nrow(dotxobs) - npcs - 1
     }
     if (DoF == "kramer") {
-        # Compute DoFs
         DoF_plsr <- .dofPLS(
             X = dotxobs,
             y = dotyobs,
