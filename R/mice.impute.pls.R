@@ -52,10 +52,10 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
 
     # Train PLS on observed (bootsrap) data
     pls_out <- pls::plsr(
-        y ~ .,
-        data = data.frame(y = dotyobs, dotxobs),
-        ncomp = ncol(dotxobs),
-        validation = "none",
+      y ~ .,
+      data = data.frame(y = dotyobs, dotxobs),
+      ncomp = nlvs,
+      validation = "none",
     )
 
     # Compute degrees of freedom
@@ -74,6 +74,7 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
             TT = apply(pls::scores(pls_out), 2, function(j) j / sqrt(sum(j^2))),
             Yhat = Yhat
         )
+
         res_df <- nrow(dotxobs) - DoF_plsr
         # If the computation fails, say so
         if(is.na(res_df) | is.nan(res_df)){
@@ -104,20 +105,19 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
 }
 
 # Degrees of freedom for supervised derived input models
-.dofPLS <- function(X, y, q = 1, TT, Yhat) {
+.dofPLS <- function(X, y, q = 1, TT, Yhat){
     # Example inputs
     # X = scale(mtcars[, -1])
     # y = mtcars[, 1]
-    # m = ncol(X)
-    # DoF.max = m + 1
-    # TT <- linear.pls.fit(X, y, m, DoF.max = DoF.max)$TT # normalizezs PC scores
     # q <- 3 # desired component / latent variable
+    # TT <- linear.pls.fit(X, y, m, DoF.max = DoF.max)$TT # normalizezs PC scores
     # Yhat <- linear.pls.fit(X, y, m, DoF.max = DoF.max)$Yhat[, (q + 1)]
 
     # Body
-    n <- nrow(X)
-    m <- ncol(X)
+    TT <- TT[, 1:q, drop = FALSE]
+    m <- q
     DoF.max <- ncol(X) + 1
+    n <- nrow(X)
 
     # Scale data
     mean.X <- apply(X, 2, mean)
@@ -129,8 +129,7 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
 
     # pls.dof
     DoF.max <- DoF.max - 1
-    TK <- matrix(, m, m)
-    KY <- krylov(K, K %*% y, m)
+    KY <- .krylov(K, K %*% y, m)
     lambda <- eigen(K)$values
     tr.K <- vector(length = m)
     for (i in 1:m) {
@@ -139,25 +138,25 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
     BB <- t(TT) %*% KY
     BB[row(BB) > col(BB)] <- 0
     b <- t(TT) %*% y
-    DoF <- vector(length = m)
     Binv <- backsolve(BB, diag(m))
     tkt <- 0
     ykv <- 0
     KjT <- array(dim = c(q, n, m))
+
     dummy <- TT
     for (i in 1:q) {
         dummy <- K %*% dummy
         KjT[i, , ] <- dummy
     }
-    trace.term <- 0
 
     Binvi <- Binv[1:q, 1:q, drop = FALSE]
     ci <- Binvi %*% b[1:q]
     Vi <- TT[, 1:q, drop = FALSE] %*% t(Binvi)
     trace.term <- sum(ci * tr.K[1:q])
     ri <- y - Yhat
+
     for (j in 1:q) {
-        KjTj <- KjT[j, , ]
+        KjTj <- as.matrix(KjT[j, , ])
         tkt <- tkt + ci[j] * sum(diag((t(TT[, 1:q, drop = FALSE]) %*%
             KjTj[, 1:q, drop = FALSE])))
         ri <- K %*% ri
@@ -170,7 +169,7 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
     DoF
 }
 
-krylov <- function(A, b, m) {
+.krylov <- function(A, b, m) {
     K <- matrix(, length(b), m)
     dummy <- b
     for (i in 1:m) {
