@@ -72,7 +72,7 @@
 #' @keywords imputation
 #' @export
 mice.impute.spcr <- function(y, ry, x, wy = NULL,
-                             theta = seq(0.1, .9, by = .1),
+                             theta = seq(0.05, .95, by = .01),
                              npcs = 1, 
                              nfolds = 10,
                              ...) {
