@@ -10,7 +10,7 @@ mice.impute.spcr(
   ry,
   x,
   wy = NULL,
-  theta = seq(0.1, 0.9, by = 0.1),
+  theta = seq(0.05, 0.95, by = 0.01),
   npcs = 1,
   nfolds = 10,
   ...
