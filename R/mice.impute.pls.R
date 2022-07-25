@@ -41,7 +41,7 @@
 mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...) {
 
     # Set up    
-    install.on.demand("plsdof", "pls", ...)
+    install.on.demand("pls", ...)
     if (is.null(wy)) wy <- !ry
 
     # Take bootstrap sample for model uncertainty
