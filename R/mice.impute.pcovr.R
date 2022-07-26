@@ -81,13 +81,13 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ..
     # Estiamte PCovR on observed data
     PCovR_out <- PCovR::pcovr_est(X = dotxobs,
                                   Y = dotyobs,
-                                  r = ncol(dotxobs),
+                                  r = npcs,
                                   a = alpha,
                                   cross = FALSE)
 
-    Ts <- PCovR_out$Te
-    W <- PCovR_out$W[, 1:npcs, drop = FALSE]
-    Py <- PCovR_out$Py[1:npcs]
+    Ts <- as.matrix(PCovR_out$Te)
+    W <- PCovR_out$W
+    Py <- PCovR_out$Py
 
     # Compute the residual sum of squares
     Yhat <- mean(y[ry][s]) + dotxobs %*% W %*% Py # fitted values
