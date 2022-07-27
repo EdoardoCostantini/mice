@@ -72,7 +72,7 @@
 #' @keywords imputation
 #' @export
 mice.impute.spcr <- function(y, ry, x, wy = NULL,
-                             theta = seq(0.05, .95, by = .01),
+                             theta = seq(0.05, .95, by = .05),
                              npcs = 1, 
                              nfolds = 10,
                              ...) {
@@ -89,13 +89,13 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
   # Cross-validate threshold ---------------------------------------------------
 
   # Obtain R-squared for all simple linear regression models
-  r2_vec <- apply(x, 2, function(j) {
-    sqrt(summary(lm(y ~ j))$r.squared)
+  r2_vec <- apply(dotxobs, 2, function(j) {
+    sqrt(summary(lm(dotyobs ~ j))$r.squared)
   })
 
   # DEfine predictor groups (pred groups) based on different theta
   pred_groups <- lapply(theta, function(m) {
-    preds <- colnames(x)[r2_vec >= m]
+    preds <- colnames(dotxobs)[r2_vec >= m]
     if (length(preds) >= 1) {
       preds
     } else {
