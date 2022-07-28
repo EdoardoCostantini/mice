@@ -54,7 +54,7 @@ mice.impute.pcr <- function(y, ry, x, wy = NULL, npcs = 1L, ...) {
     )
 
     # Compute the residual sum of squares
-    res_ss <- sum(pcr_out$residuals^2)
+    res_ss <- sum(stats::resid(pcr_out)[, , npcs]^2)
 
     # Compute degrees of freedom
     res_df <- n1 - npcs

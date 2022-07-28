@@ -88,7 +88,7 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) 
     }
 
     # Compute residual sum of squares
-    res_ss <- sum((stats::resid(pls_out)[, , nlvs])^2)
+    res_ss <- sum(sum(stats::resid(pls_out)[, , nlvs]^2))
 
     # Compute sigma
     sigma <- sqrt(res_ss / res_df)
