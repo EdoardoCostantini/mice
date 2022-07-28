@@ -158,9 +158,14 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
     validation = "none"
   )
 
-  # Define sigma
-  RSS <- sqrt(sum(pcr_out$residuals^2))
-  sigma <- RSS / (n1 - npcs - 1)
+  # Compute the residual sum of squares
+  res_ss <- sum(pcr_out$residuals^2)
+
+  # Compute degrees of freedom
+  res_df <- n1 - npcs
+
+  # Compute sigma
+  sigma <- sqrt(res_ss /  res_df)
 
   # Get prediction on (active) missing part
   yhat <- predict(

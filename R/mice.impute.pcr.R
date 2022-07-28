@@ -53,9 +53,14 @@ mice.impute.pcr <- function(y, ry, x, wy = NULL, npcs = 1L, ...) {
         validation = "none"
     )
 
-    # Define sigma
-    RSS <- sqrt(sum(pcr_out$residuals^2))
-    sigma <- RSS / (n1 - npcs - 1)
+    # Compute the residual sum of squares
+    res_ss <- sum(pcr_out$residuals^2)
+
+    # Compute degrees of freedom
+    res_df <- n1 - npcs
+
+    # Compute sigma
+    sigma <- sqrt(res_ss / res_df)
 
     # Get prediction on missing part
     yhat <- predict(pcr_out, newdata = x[wy, ], ncomp = npcs, type = "response")
