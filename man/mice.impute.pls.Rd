@@ -5,7 +5,7 @@
 \alias{pls}
 \title{Imputation by partial least square regression}
 \usage{
-mice.impute.pls(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
+mice.impute.pls(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...)
 }
 \arguments{
 \item{y}{Vector to be imputed}

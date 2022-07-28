@@ -38,7 +38,7 @@
 #' @family univariate imputation functions
 #' @keywords datagen
 #' @export
-mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...) {
+mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) {
 
     # Set up    
     install.on.demand("pls", ...)
@@ -56,6 +56,7 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
       data = data.frame(y = dotyobs, dotxobs),
       ncomp = nlvs,
       validation = "none",
+      center = TRUE
     )
 
     # Compute degrees of freedom

@@ -5,7 +5,7 @@
 \alias{pcovr}
 \title{Imputation by principal covariates regression}
 \usage{
-mice.impute.pcovr(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ...)
+mice.impute.pcovr(y, ry, x, wy = NULL, npcs = 1L, DoF = "naive", ...)
 }
 \arguments{
 \item{y}{Vector to be imputed}

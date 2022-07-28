@@ -40,7 +40,7 @@
 #' @family univariate imputation functions
 #' @keywords datagen
 #' @export
-mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ...) {
+mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "naive", ...) {
 
     # Set up
     install.on.demand("PCovR", ...)
