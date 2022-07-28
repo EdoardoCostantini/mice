@@ -95,7 +95,7 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "kramer", ..
 
     # Compute degrees of freedom
     if (DoF == "naive") {
-        res_df <- nrow(dotxobs) - npcs - 1
+        res_df <- nrow(dotxobs) - npcs
     }
     if (DoF == "kramer") {
         DoF_plsr <- .dofPLS(

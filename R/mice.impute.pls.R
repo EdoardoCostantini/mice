@@ -60,7 +60,7 @@ mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "kramer", ...)
 
     # Compute degrees of freedom
     if(DoF == "naive"){
-        res_df <- nrow(dotxobs) - nlvs - 1
+        res_df <- nrow(dotxobs) - nlvs
     }
     if(DoF == "kramer"){
         # Extract fitted values for all numbers of pcs
