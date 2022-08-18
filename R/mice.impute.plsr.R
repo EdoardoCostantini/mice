@@ -2,7 +2,7 @@
 #'
 #' Imputes univariate missing data by using partial least square regression.
 #'
-#' @aliases mice.impute.pls pls
+#' @aliases mice.impute.plsr plsr
 #' @inheritParams mice.impute.norm.boot
 #' @param nlvs The number of latent variables to consider in the PLS regression.
 #' @param DoF The method to compute the degrees of freedom, either \code{"naive"}, or \code{"kramer"}.
@@ -38,7 +38,7 @@
 #' @family univariate imputation functions
 #' @keywords datagen
 #' @export
-mice.impute.pls <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) {
+mice.impute.plsr <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...) {
 
     # Set up    
     install.on.demand("pls", ...)

@@ -80,7 +80,7 @@ Other univariate imputation functions:
 \code{\link{mice.impute.norm.predict}()},
 \code{\link{mice.impute.norm}()},
 \code{\link{mice.impute.pcr}()},
-\code{\link{mice.impute.pls}()},
+\code{\link{mice.impute.plsr}()},
 \code{\link{mice.impute.pmm}()},
 \code{\link{mice.impute.polr}()},
 \code{\link{mice.impute.polyreg}()},
