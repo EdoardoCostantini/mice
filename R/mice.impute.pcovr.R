@@ -16,7 +16,7 @@
 #' with replacement from the observed cases \code{y[ry]}, and stores in x* the
 #' corresponding values from \code{x[ry, ]}.
 #' \item Compute an optimal \code{alpha} value for the PCovR model on the basis 
-#' of maximum likelihood principles described in Vervloet et. al. (2015).
+#' of maximum likelihood principles described in Vervloet et. al. (2015) for a given number of components.
 #' \item Estimate W and Py from the PCovR model fitted to y* and x*
 #' \item Predict y values based on \code{x[wy,]} and add noise.
 #' }
@@ -59,26 +59,23 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "naive", ...
         scale = attributes(dotxobs)$`scaled:scale`
     )
     
-    # Compute error ratio components
+    # Compute ery (error ratio component)
     lm_mod <- lm(dotyobs ~ -1 + dotxobs)
     ery <- 1 - summary(lm_mod)$r.squared
 
-    # Compute Erx
+    # PCA on X
     svd_erx <- svd(dotxobs)
-    vec <- 1:npcs
-    vec <- c(vec[1] - 1, vec, vec[length(vec)] + 1)
-    VAF <- c(0, cumsum(svd_erx$d^2) / sum(svd_erx$d^2))
-    VAF <- VAF[vec + 1]
-    scr <- array(NA, c(1, length(vec)))
-    for (u in 2:(length(vec) - 1)) {
-        scr[, u] <- (VAF[u] - VAF[u - 1]) / (VAF[u + 1] - VAF[u])
-    }
-    erx <- 1 - VAF[which.max(scr)]
+
+    # CPVE
+    CPVE <- cumsum(svd_erx$d^2 / sum(svd_erx$d^2))
+
+    # Compute Erx
+    erx <- 1 - CPVE[npcs]
 
     # Find alpha ML
     alpha <- sum(dotxobs^2) / (sum(dotxobs^2) + sum(dotyobs^2) * erx / ery)
 
-    # Estiamte PCovR on observed data
+    # Estimate PCovR on observed data
     PCovR_out <- PCovR::pcovr_est(X = dotxobs,
                                   Y = dotyobs,
                                   r = npcs,

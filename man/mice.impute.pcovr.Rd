@@ -42,7 +42,7 @@ The method consists of the following steps:
 with replacement from the observed cases \code{y[ry]}, and stores in x* the
 corresponding values from \code{x[ry, ]}.
 \item Compute an optimal \code{alpha} value for the PCovR model on the basis 
-of maximum likelihood principles described in Vervloet et. al. (2015).
+of maximum likelihood principles described in Vervloet et. al. (2015) for a given number of components.
 \item Estimate W and Py from the PCovR model fitted to y* and x*
 \item Predict y values based on \code{x[wy,]} and add noise.
 }
