@@ -50,6 +50,13 @@ of maximum likelihood principles described in Vervloet et. al. (2015) for a give
 Residual degrees of freedom are estimated by using the Krylov representation
 described by Kramer and Sugiyama (2011) as implemented in the \code{plsdof} 
 package, or with the naive approach (n - npcs - 1).
+
+Currently the implementation of this method uses a regular PCA step if the algorithm selects 
+alpha = 1. This is because the algorithm to estimate PCovR with the PCovR package leads 
+to numerical instability within the mice algorithm, but the straightforward way to estimate 
+PCovR is much more computationally intensive.
+In the future, it would be ideal to have a unique estimation set up that is fast,
+but works well for any value of alpha.
 }
 \references{
 De Jong, S., & Kiers, H. A. (1992). Principal covariates regression: part I. 

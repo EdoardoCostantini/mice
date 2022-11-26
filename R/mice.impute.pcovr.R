@@ -25,6 +25,13 @@
 #' described by Kramer and Sugiyama (2011) as implemented in the \code{plsdof} 
 #' package, or with the naive approach (n - npcs - 1).
 #' 
+#' Currently the implementation of this method uses a regular PCA step if the algorithm selects 
+#' alpha = 1. This is because the algorithm to estimate PCovR with the PCovR package leads 
+#' to numerical instability within the mice algorithm, but the straightforward way to estimate 
+#' PCovR is much more computationally intensive.
+#' In the future, it would be ideal to have a unique estimation set up that is fast,
+#' but works well for any value of alpha.
+#' 
 #' @author Edoardo Costantini, 2022
 #' @references
 #'
@@ -76,15 +83,27 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "naive", ...
     alpha <- sum(dotxobs^2) / (sum(dotxobs^2) + sum(dotyobs^2) * erx / ery)
 
     # Estimate PCovR on observed data
-    PCovR_out <- PCovR::pcovr_est(X = dotxobs,
-                                  Y = dotyobs,
-                                  r = npcs,
-                                  a = alpha,
-                                  cross = FALSE)
-
-    Ts <- as.matrix(PCovR_out$Te)
-    W <- PCovR_out$W
-    Py <- PCovR_out$Py
+    if(npcs == ncol(dotxobs)){
+        # If alpha is 1 (npcs == ncol data), use slow but robust version
+        Hx <- dotxobs %*% solve(t(dotxobs) %*% dotxobs) %*% t(dotxobs)
+        G_vv <- alpha * dotxobs %*% t(dotxobs) / sum(dotxobs^2) + (1 - alpha) * Hx %*% dotyobs %*% t(dotyobs) %*% Hx / sum(dotyobs^2)
+        EG_vv <- eigen(G_vv)
+        Ts <- EG_vv$vectors[, 1:npcs]
+        W <- solve(t(dotxobs) %*% dotxobs) %*% t(dotxobs) %*% Ts
+        Py <- t(Ts) %*% dotyobs
+    } else {
+        # If alpha is not 1, use fast PCovR version
+        PCovR_out <- PCovR::pcovr_est(
+            X = dotxobs,
+            Y = dotyobs,
+            r = npcs,
+            a = alpha,
+            cross = FALSE
+        )
+        Ts <- as.matrix(PCovR_out$Te)
+        W <- PCovR_out$W
+        Py <- PCovR_out$Py
+    }
 
     # Compute the residual sum of squares
     Yhat <- mean(y[ry][s]) + dotxobs %*% W %*% Py # fitted values
@@ -92,7 +111,7 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "naive", ...
 
     # Compute degrees of freedom
     if (DoF == "naive") {
-        res_df <- nrow(dotxobs) - npcs
+        res_df <- n1 - npcs
     }
     if (DoF == "kramer") {
         DoF_plsr <- .dofPLS(
@@ -102,7 +121,7 @@ mice.impute.pcovr <- function(y, ry, x, wy = NULL, npcs = 1L, DoF = "naive", ...
             TT = Ts,
             Yhat = Yhat
         )
-        res_df <- nrow(dotxobs) - DoF_plsr
+        res_df <- n1 - DoF_plsr
         # If the computation fails, say so
         if(is.na(res_df) | is.nan(res_df)){
             stop(
