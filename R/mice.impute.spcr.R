@@ -103,7 +103,7 @@ mice.impute.spcr <- function(y, ry, x, wy = NULL,
     }
   })
 
-  # If theta used lead only to empty pred groups, say so
+  # If theta used leads only to empty pred groups, say so
   if(all(sapply(pred_groups, is.null)) == TRUE){
     stop(
       paste0(
