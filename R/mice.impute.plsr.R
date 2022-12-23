@@ -56,6 +56,7 @@ mice.impute.plsr <- function(y, ry, x, wy = NULL, nlvs = 1L, DoF = "naive", ...)
       data = data.frame(y = dotyobs, dotxobs),
       ncomp = nlvs,
       validation = "none",
+      scale = TRUE, # I thought it was implied, it is not
       center = TRUE
     )
 
