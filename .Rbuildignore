@@ -20,4 +20,4 @@ vignettes/
 ^pkgdown$
 ^LICENSE\.md$
 ^\.github$
-^.*\.idea$
+^CRAN-SUBMISSION$

@@ -24,7 +24,7 @@
 #' a warning.
 #' @author Mingyang Cai and Gerko Vink
 
-#@author Mingyang Cai (University of Utrecht), \email{g.vink#uu.nl}
+# @author Mingyang Cai (University of Utrecht), \email{g.vink#uu.nl}
 #' @seealso \code{\link{mice.impute.pmm}}
 #' Van Buuren, S. (2018).
 #' \href{https://stefvanbuuren.name/fimd/sec-knowledge.html#sec:quadratic}{\emph{Flexible Imputation of Missing Data. Second Edition.}}
@@ -32,64 +32,53 @@
 #' @family univariate imputation functions
 #' @keywords datagen
 #' @examples
-#' require(lattice)
-#'
-#' # Create Data
-#' B1 <- .5
-#' B2 <- .5
-#' X <- rnorm(1000)
-#' XX <- X^2
+#' # simulate data
+#' beta2 <- beta1 <- .5
+#' x <- rnorm(1000)
 #' e <- rnorm(1000, 0, 1)
-#' Y <- B1 * X + B2 * XX + e
-#' dat <- data.frame(x = X, xx = XX, y = Y)
+#' y <- beta1 * x + beta2 * x^2 + e
+#' dat <- data.frame(y = y, x = x, x2 = x^2)
+#' m <- as.logical(rbinom(1000, 1, 0.25))
+#' dat[m, c("x", "x2")] <- NA
 #'
-#' # Impose 25 percent MCAR Missingness
-#' dat[0 == rbinom(1000, 1, 1 - .25), 1:2] <- NA
+#' # impute
+#' blk <- list("y", c("x", "x2"))
+#' meth <- c("", "mpmm")
+#' imp <- mice(dat, blocks = blk, method = meth, print = FALSE,
+#'     m = 2, maxit = 2)
 #'
-#' # Prepare data for imputation
-#' blk <- list(c("x", "xx"), "y")
-#' meth <- c("mpmm", "")
-#'
-#' # Impute data
-#' imp <- mice(dat, blocks = blk, method = meth, print = FALSE)
-#'
-#' # Pool results
-#' pool(with(imp, lm(y ~ x + xx)))
-#'
-#' # Plot results
-#' stripplot(imp)
-#' plot(dat$x, dat$xx, col = mdc(1), xlab = "x", ylab = "xx")
-#' cmp <- complete(imp)
-#' points(cmp$x[is.na(dat$x)], cmp$xx[is.na(dat$x)], col = mdc(2))
+#' # analyse and check
+#' summary(pool(with(imp, lm(y ~ x + x2))))
+#' with(dat, plot(x, x2, col = mdc(1)))
+#' with(complete(imp), points(x[m], x2[m], col = mdc(2)))
 #' @export
 #'
-mice.impute.mpmm <- function(data, format = "imputes", ...){
+mice.impute.mpmm <- function(data, format = "imputes", ...) {
   order <- dimnames(data)[[1]]
   res <- mpmm.impute(data, ...)
-  return(single2imputes(res[order,], is.na(data)))
+  return(single2imputes(res[order, ], is.na(data)))
 }
 
 
-mpmm.impute <- function(data, ...){
+mpmm.impute <- function(data, ...) {
   data <- as.data.frame(data)
   r <- !is.na(data)
-  mpat <- apply(r, 1, function(x) paste(as.numeric(x), collapse=''))
+  mpat <- apply(r, 1, function(x) paste(as.numeric(x), collapse = ""))
   nmpat <- length(unique(mpat))
   if (nmpat != 2) stop("There are more than one missingness patterns")
   r <- unique(r)
   r <- r[rowSums(r) < ncol(r), ]
   y <- data[, which(r == FALSE), drop = FALSE]
-  ry <- !is.na(y)[,1]
+  ry <- !is.na(y)[, 1]
   x <- data[, which(r == TRUE), drop = FALSE]
   wy <- !ry
-  ES <- eigen(solve(cov(y[ry, ,drop = FALSE], y[ry, ,drop = FALSE])) %*% cov(y[ry, ,drop = FALSE], x[ry, ,drop = FALSE])
-              %*% solve(cov(x[ry, ,drop = FALSE], x[ry, ,drop = FALSE])) %*% cov(x[ry, ,drop = FALSE], y[ry, ,drop = FALSE]))
+  ES <- eigen(solve(cov(y[ry, , drop = FALSE], y[ry, , drop = FALSE])) %*% cov(y[ry, , drop = FALSE], x[ry, , drop = FALSE])
+    %*% solve(cov(x[ry, , drop = FALSE], x[ry, , drop = FALSE])) %*% cov(x[ry, , drop = FALSE], y[ry, , drop = FALSE]))
   parm <- as.matrix(ES$vectors[, 1])
   z <- as.matrix(y) %*% parm
   imp <- mice.impute.pmm(z, ry, x)
   zstar <- as.matrix(imp)
-  y[wy, ] <- y[ry, ,drop = FALSE][match(zstar, z[ry]), ]
-  data <- cbind(y, x)
-  data <- as.data.frame(data)
+  y[wy, ] <- y[ry, , drop = FALSE][match(zstar, z[ry]), ]
+  data[colnames(y)] <- y
   return(data)
 }
