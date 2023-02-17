@@ -139,7 +139,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   nthrs = 10,
   maxnpcs = 3,
   K = 5,
-  test = c("LRT", "F")[2],
+  test = c("LRT", "F", "MSE")[2],
   max.features = ncol(ivs),
   min.features = 5
   ) {
@@ -152,7 +152,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   # fam <- c("gaussian", "binomial", "poisson")[1]
   # maxnpcs <- 5
   # K = 5
-  # test = c("LRT", "F")[1]
+  # test = c("LRT", "F", "MSE")[3]
   # max.features = ncol(ivs)
   # min.features = 1
 
@@ -167,7 +167,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
     glm(dv ~ ivs[, j], family = fam)
   })
   # TODO: check what happens if ivs have a categorical predictor
-  # TODO: check what happens if dv has different distributino
+  # TODO: check what happens if dv has different distribution
   # TODO: if family gaussian, then do simple lm which is faster than glm
 
   # Extract Log-likelihood values
@@ -218,6 +218,12 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
   # If two thresholds are giving the same result reduce the burden
   pred.map <- pred.map[, !duplicated(t(pred.map))]
+
+  # Get rid of thresholds that are keeping too few predictors
+  pred.map <- pred.map[, colSums(pred.map) >= min.features]
+
+  # Get rid of thresholds that are keeping too many predictors
+  pred.map <- pred.map[, colSums(pred.map) <= max.features]
 
   # And update the effective number of the thresholds considered
   nthrs.eff <- ncol(pred.map)
@@ -281,7 +287,8 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
           map_kfcv[Q, thr, k] <- getTestStat(
             glm.fit = glm.fit,
             glm.fit0 = glm.fit0,
-            test = test
+            test = test,
+            y_true = yva
           )
         }
       }
@@ -298,6 +305,11 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
     # revert to correct scale
     scor <- exp(lscor)
 
+    # K-fold Cross-Validation solution
+    kfcv_sol <- which(
+      scor == max(scor, na.rm = TRUE), # TODO: min or max?
+      arr.ind = TRUE
+    )
   }
 
   if(test == "LRT"){
@@ -307,13 +319,24 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
     # Put on the likelihood scale
     scor <- exp(scor)
 
+    # K-fold Cross-Validation solution
+    kfcv_sol <- which(
+      scor == max(scor, na.rm = TRUE), # TODO: min or max?
+      arr.ind = TRUE
+    )
+
   }
 
-  # K-fold Cross-Validation solution
-  kfcv_sol <- which(
-    scor == max(scor, na.rm = TRUE), # TODO: min or max?
-    arr.ind = TRUE
-  )
+  if (test == "MSE") {
+    # Mean of the likelihood ratio test statistics
+    scor <- apply(map_kfcv, c(1, 2), mean, na.rm = FALSE)
+
+    # K-fold Cross-Validation solution
+    kfcv_sol <- which(
+      scor == min(scor, na.rm = TRUE),
+      arr.ind = TRUE
+    )
+  }
 
   # Which threshold has been selected?
   thr.cv <- as.numeric(names(scor[kfcv_sol[1], kfcv_sol[2]]))
@@ -653,7 +676,7 @@ se.na <- function(x) {
 }
 
 # Get test statistics given model of interest
-getTestStat <- function(glm.fit, glm.fit0 = NULL, test = "LRT") {
+getTestStat <- function(glm.fit, glm.fit0 = NULL, test = "LRT", y_true = NULL) {
   # glm.fit0 <- lm(mpg ~ 1, data = mtcars)
   # glm.fit <- lm(mpg ~ ., data = mtcars)
   if (test == "LRT") {
@@ -661,6 +684,9 @@ getTestStat <- function(glm.fit, glm.fit0 = NULL, test = "LRT") {
   }
   if (test == "F") {
     test.stat <- anova(glm.fit, glm.fit0, test = "F")$F[2]
+  }
+  if (test == "MSE") {
+    test.stat <- MLmetrics::MSE(y_pred = predict(glm.fit), y_true = y_true)
   }
   return(test.stat)
 }
