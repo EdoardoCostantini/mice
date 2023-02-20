@@ -135,7 +135,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   dv, 
   ivs, 
   fam = "gaussian",
-  thrs = c("LLS", "pseudoR2")[1],
+  thrs = c("LLS", "pseudoR2", "normalized")[1],
   nthrs = 10,
   maxnpcs = 3,
   K = 5,
@@ -207,23 +207,119 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
   }
 
+  if (thrs == "normalized") {
+    
+    # Set objects to the required dimension
+    x = t(as.matrix(ivs))
+    y = dv
+    featurenames = colnames(ivs)
+
+    # Empty
+    s0.perc <- NULL
+
+    # Sample size
+    n <- length(y)
+
+    # Compute vector of feature means
+    xbar <- x %*% rep(1 / n, n)
+
+    # Same as computing the row means
+    cbind(xbar, rowMeans(x))
+
+    # Compute the diagonal of the cross-product matrix between variables
+    sxx <- ((x - as.vector(xbar))^2) %*% rep(1, n)
+
+    # Which is the mid step for variance
+    cbind(sxx, apply(x - as.vector(xbar), 1, var) * (n - 1))
+
+    # Compute the cross-product matrix between X and Y
+    sxy <- (x - as.vector(xbar)) %*% (y - mean(y))
+
+    # Which is the mid step for covariance between the two
+    cbind(sxx, apply(x - as.vector(xbar), 1, var) * (n - 1))
+
+    # Total sum of squares
+    syy <- sum((y - mean(y))^2)
+
+    # Ratio of the two
+    numer <- sxy / sxx
+
+    # Compute sd?
+    sd <- sqrt((syy / sxx - numer^2) / (n - 2))
+
+    # add "fudge"(?) to the denominator
+    if (is.null(s0.perc)) {
+      fudge <- median(sd)
+    }
+    if (!is.null(s0.perc)) {
+      if (s0.perc >= 0) {
+        fudge <- quantile(sd, s0.perc)
+      }
+      if (s0.perc < 0) {
+        fudge <- 0
+      }
+    }
+
+    # Ratio between numerator and sd
+    tt <- numer / (sd + fudge)
+
+    # Compute normalized correlation between y and every x
+    feature.scores <- tt
+
+    # Set up the same arguments
+    fit <- train.obj
+    data <- data.train
+    n.threshold <- nthrs
+    n.fold <- K
+    folds <- NULL
+    n.components <- maxnpcs
+    min.features <- 5
+    max.features <- nrow(data.train$x)
+    compute.fullcv <- TRUE
+    compute.preval <- TRUE
+    xl.mode <- c(
+      "regular",
+      "firsttime",
+      "onetime",
+      "lasttime"
+    )[1]
+    xl.time <- NULL
+    xl.prevfit <- NULL
+
+    # Type of fit
+    type <- fit$type
+
+    # Number of components
+    n.components <- min(5, n.components)
+
+    # Sample size
+    n <- ncol(data$x)
+
+    # Store the normalized correlation scores
+    ascores <- abs(fit$feature.scores)
+
+    # Define upper and lower bounds of the normalized correlation
+    lower <- quantile(abs(ascores), 1 - (max.features / nrow(data$x)))
+    upper <- quantile(abs(ascores), 1 - (min.features / nrow(data$x)))
+  }
+
   # Define threshold values
   thrs_values <- seq(from = lower, to = upper, length.out = nthrs)
 
   # Create a map of active predictors based on threshold values
-  pred.map <- sapply(1:nthrs, function(a) sort(ascores) >= thrs_values[a])
+  pred.map <- sapply(1:nthrs, function(a) ascores > thrs_values[a])
 
   # Use thresholds as names
   colnames(pred.map) <- round(thrs_values, 3)
 
-  # If two thresholds are giving the same result reduce the burden
-  pred.map <- pred.map[, !duplicated(t(pred.map))]
+  # # If two thresholds are giving the same result reduce the burden
+  # pred.map <- pred.map[, !duplicated(t(pred.map))]
 
-  # Get rid of thresholds that are keeping too few predictors
-  pred.map <- pred.map[, colSums(pred.map) >= min.features]
+  # # Get rid of thresholds that are keeping too few predictors
+  # pred.map <- pred.map[, colSums(pred.map) >= min.features]
 
-  # Get rid of thresholds that are keeping too many predictors
-  pred.map <- pred.map[, colSums(pred.map) <= max.features]
+  # # Get rid of thresholds that are keeping too many predictors
+  # pred.map <- pred.map[, colSums(pred.map) <= max.features]
 
   # And update the effective number of the thresholds considered
   nthrs.eff <- ncol(pred.map)
@@ -347,8 +443,9 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   # Return
   return(
     list(
-      thr.cv = thr.cv,
-      Q.cv = Q.cv,
+      thr.cv = as.numeric(thr.cv),
+      thr = as.numeric(thrs_values),
+      Q.cv = as.numeric(Q.cv),
       scor = scor,
       pred.map = pred.map,
       pred.active = rownames(pred.map)[pred.map[, kfcv_sol[, "col"]]]
@@ -358,8 +455,8 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
 .spcr.cv.pkg <- function(dv, ivs, fam = "gaussian", nthrs = 10, maxnpcs = 3, K = 5) {
   # Example inputs
-  # dv <- as.factor(mtcars[, 9])
-  # ivs <- t(mtcars[, -9])
+  # dv <- mtcars[, 1]
+  # ivs <- t(mtcars[, -1])
   # nthrs = 10
   # fam <- c("gaussian", "binomial", "poisson")[2]
   # maxnpcs <- 3
@@ -367,7 +464,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
   # Process data
   x = t(as.matrix(ivs))
-  y = y
+  y = dv
   featurenames = colnames(ivs)
 
   #
@@ -566,6 +663,9 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   scor.upper <- exp(lscor + se.lscor)
   scor <- exp(lscor)
 
+  # Give names that make sense
+  colnames(scor) <- round(thresholds, 3)
+
   # Compute the pre-validation
   if (compute.preval) {
     for (i in 1:n.threshold) {
@@ -616,11 +716,14 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
     list(
       thr.cv = thr.cv,
       # pred.active = pred.map[, coord_KCVC[, "col"]],
-      Q.cv = Q.cv
+      thr = as.numeric(thresholds),
+      Q.cv = Q.cv,
+      scor = scor,
+      # pred.map = pred.map,
+      pred.active = rownames(cur.tt)[cur.tt > thr.cv]
     )
   )
 }
-
 
 # Load a special SVD function
 mysvd <- function(x,
