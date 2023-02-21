@@ -147,11 +147,11 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   # Example inputs
   # dv <- mtcars[, 1]
   # ivs <- mtcars[, -1]
-  # thrs = c("LLS", "pseudoR2")[1]
+  # thrs = c("LLS", "pseudoR2")[2]
   # nthrs = 10
   # fam <- c("gaussian", "binomial", "poisson")[1]
   # maxnpcs <- 5
-  # K = 5
+  # K = 2
   # test = c("LRT", "F", "MSE")[3]
   # max.features = ncol(ivs)
   # min.features = 1
@@ -301,7 +301,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
   # Loop over K folds
   for (k in 1:K) {
-    # k <- 5
+    # k <- 1
 
     # Create fold data:
     Xtr <- ivs[part != k, , drop = FALSE]
@@ -330,37 +330,76 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
         # Perform PCA
         svd_Xtr <- svd(Xtr_thr)
 
-        # Project validation data on the PCs
+        # Project training and validation data on the PCs
+        PCtra <- Xtr_thr %*% svd_Xtr$v
         PCsva <- Xva_thr %*% svd_Xtr$v
 
         # Check how many components are available (effective number)
         q.eff <- min(sum(aset), maxnpcs)
 
-        # Select the PC scores that are available
+        # Select the available PC scores
+        PCtra.eff <- PCtra[, 1:q.eff, drop = FALSE]
         PCsva.eff <- PCsva[, 1:q.eff, drop = FALSE]
 
         # Compute the F-statistic for the possible additive PCRs
         for (Q in 1:q.eff) {
           # Q <- 1
 
-          # Estimate GLM models
-          glm.fit <- glm(yva ~ PCsva.eff[, 1:Q], family = fam)
+          # Train GLM model
+          glm_fit_tr <- glm(ytr ~ PCtra.eff[, 1:Q], family = fam)
+          glm_null_tr <- glm(ytr ~ 1, family = fam)
+          
+          # Obtain prediction based on new data
+          yva_hat <- cbind(1, PCsva.eff[, 1:Q]) %*% coef(glm_fit_tr)
+
+          # Obtain validation residuals
+          r_va <- (yva - yva_hat)
+
+          # Store the estimate of the sigma
+          s <- sqrt(sum(resid(glm_fit_tr)^2) / (length(ytr))) # maximum likelihood version
+          # s <- sqrt(sum(r_va^2) / (length(yva)))              # based on va
+
+          # Compute validation data log-likelihood
+          loglik_mod <- -nrow(PCsva) / 2 * log(2 * pi) - nrow(PCsva) / 2 * log(s^2) - 1 / (2 * s^2) * sum(r_va^2)
+
+          # Compute null model log-likelihood on validation data
+          s_null <- sqrt(sum(resid(glm_null_tr)^2) / (length(ytr))) # maximum likelihood version
+          r_null <- yva - mean(ytr)
+          loglik_null <- -nrow(PCsva) / 2 * log(2 * pi) - nrow(PCsva) / 2 * log(s_null^2) - 1 / (2 * s_null^2) * sum(r_null^2)
 
           # Extract desired statistic
           if (test == "LRT") {
-            map_kfcv[Q, thr, k] <- as.numeric(- 2 * (logLik(glm.fit0) - logLik(glm.fit)))
+            # map_kfcv[Q, thr, k] <- as.numeric(- 2 * (logLik(glm_fit_tr0) - logLik(glm_fit_tr)))
+            map_kfcv[Q, thr, k] <- as.numeric(-2 * (loglik_null - loglik_mod))
           }
           if (test == "F") {
-            map_kfcv[Q, thr, k] <- anova(glm.fit0, glm.fit, test = "F")$F[2]
+            # Compute residuals
+            Er <- TSS <- sum((yva - mean(ytr))^2) # baseline prediction error
+            Ef <- SSE <- sum((yva - yva_hat)^2)   # prediction error
+
+            # Compute degrees of freedom
+            dfR <- (nrow(PCsva) - 0 - 1) # for the restricted model
+            dfF <- (nrow(PCsva) - Q - 1) # for the full model
+
+            # Compute the f statistic
+            Fstat <- ((Er - Ef) / (dfR - dfF)) / (Ef / dfF)
+            map_kfcv[Q, thr, k] <- Fstat
+
+            # Estimate GLM models
+            # glm_null_va <- glm(yva ~ 1, family = fam)
+            # glm_mod_va <- glm(yva ~ PCsva.eff[, 1:Q], family = fam)
+
+            # Compute F statistic as in SPCR package
+            # map_kfcv[Q, thr, k] <- anova(glm_null_va, glm_mod_va, test = "F")$F[2]
           }
           if (test == "PR2") {
-            map_kfcv[Q, thr, k] <- as.numeric(1 - exp(-2 / n * (logLik(glm.fit) - logLik(glm.fit0))))
+            map_kfcv[Q, thr, k] <- as.numeric(1 - exp(-2 / n * (loglik_mod - loglik_null)))
           }
           if (test == "MSE") {
-            map_kfcv[Q, thr, k] <- MLmetrics::MSE(y_pred = predict(glm.fit), y_true = yva)
+            map_kfcv[Q, thr, k] <- MLmetrics::MSE(y_pred = yva_hat, y_true = yva)
           }
           if (test == "BIC") {
-            map_kfcv[Q, thr, k] <- as.numeric(log(n) * (Q + 1 + 1) - 2 * logLik(glm.fit))
+            map_kfcv[Q, thr, k] <- as.numeric(log(nrow(PCsva)) * (Q + 1 + 1) - 2 * loglik_mod)
           }
         }
       }
