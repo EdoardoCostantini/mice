@@ -166,9 +166,6 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   glm.fits <- lapply(1:ncol(ivs), function(j) {
     glm(dv ~ ivs[, j], family = fam)
   })
-  # TODO: check what happens if ivs have a categorical predictor
-  # TODO: check what happens if dv has different distribution
-  # TODO: if family gaussian, then do simple lm which is faster than glm
 
   # Extract Log-likelihood values
   ll0 <- as.numeric(logLik(glm0))
@@ -210,9 +207,9 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   if (thrs == "normalized") {
     
     # Set objects to the required dimension
-    x = t(as.matrix(ivs))
-    y = dv
-    featurenames = colnames(ivs)
+    x <- t(as.matrix(ivs))
+    y <- dv
+    featurenames <- colnames(ivs)
 
     # Empty
     s0.perc <- NULL
@@ -263,44 +260,13 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
     # Ratio between numerator and sd
     tt <- numer / (sd + fudge)
 
-    # Compute normalized correlation between y and every x
-    feature.scores <- tt
-
-    # Set up the same arguments
-    fit <- train.obj
-    data <- data.train
-    n.threshold <- nthrs
-    n.fold <- K
-    folds <- NULL
-    n.components <- maxnpcs
-    min.features <- 5
-    max.features <- nrow(data.train$x)
-    compute.fullcv <- TRUE
-    compute.preval <- TRUE
-    xl.mode <- c(
-      "regular",
-      "firsttime",
-      "onetime",
-      "lasttime"
-    )[1]
-    xl.time <- NULL
-    xl.prevfit <- NULL
-
-    # Type of fit
-    type <- fit$type
-
-    # Number of components
-    n.components <- min(5, n.components)
-
-    # Sample size
-    n <- ncol(data$x)
-
     # Store the normalized correlation scores
-    ascores <- abs(fit$feature.scores)
+    ascores <- abs(tt)[, 1]
 
     # Define upper and lower bounds of the normalized correlation
-    lower <- quantile(abs(ascores), 1 - (max.features / nrow(data$x)))
-    upper <- quantile(abs(ascores), 1 - (min.features / nrow(data$x)))
+    lower <- quantile(abs(ascores), 1 - (max.features / nrow(x)))
+    upper <- quantile(abs(ascores), 1 - (min.features / nrow(x)))
+
   }
 
   # Define threshold values
@@ -315,11 +281,11 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   # # If two thresholds are giving the same result reduce the burden
   # pred.map <- pred.map[, !duplicated(t(pred.map))]
 
-  # # Get rid of thresholds that are keeping too few predictors
-  # pred.map <- pred.map[, colSums(pred.map) >= min.features]
+  # Get rid of thresholds that are keeping too few predictors
+  pred.map <- pred.map[, colSums(pred.map) >= min.features]
 
-  # # Get rid of thresholds that are keeping too many predictors
-  # pred.map <- pred.map[, colSums(pred.map) <= max.features]
+  # Get rid of thresholds that are keeping too many predictors
+  pred.map <- pred.map[, colSums(pred.map) <= max.features]
 
   # And update the effective number of the thresholds considered
   nthrs.eff <- ncol(pred.map)
@@ -335,6 +301,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
   # Loop over K folds
   for (k in 1:K) {
+    # k <- 1
 
     # Create fold data:
     Xtr <- ivs[part != k, , drop = FALSE]
@@ -374,18 +341,27 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
         # Compute the F-statistic for the possible additive PCRs
         for (Q in 1:q.eff) {
-          # Q <- 3
+          # Q <- 1
 
           # Estimate GLM models
           glm.fit <- glm(yva ~ PCsva.eff[, 1:Q], family = fam)
 
           # Extract desired statistic
-          map_kfcv[Q, thr, k] <- getTestStat(
-            glm.fit = glm.fit,
-            glm.fit0 = glm.fit0,
-            test = test,
-            y_true = yva
-          )
+          if (test == "LRT") {
+            map_kfcv[Q, thr, k] <- as.numeric(- 2 * (logLik(glm.fit0) - logLik(glm.fit)))
+          }
+          if (test == "F") {
+            map_kfcv[Q, thr, k] <- anova(glm.fit0, glm.fit, test = "F")$F[2]
+          }
+          if (test == "PR2") {
+            map_kfcv[Q, thr, k] <- as.numeric(1 - exp(-2 / n * (logLik(glm.fit) - logLik(glm.fit0))))
+          }
+          if (test == "MSE") {
+            map_kfcv[Q, thr, k] <- MLmetrics::MSE(y_pred = predict(glm.fit), y_true = yva)
+          }
+          if (test == "BIC") {
+            map_kfcv[Q, thr, k] <- as.numeric(log(n) * (Q + 1 + 1) - 2 * logLik(glm.fit))
+          }
         }
       }
 
