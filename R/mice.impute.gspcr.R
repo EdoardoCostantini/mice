@@ -278,8 +278,8 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   # Use thresholds as names
   colnames(pred.map) <- round(thrs_values, 3)
 
-  # # If two thresholds are giving the same result reduce the burden
-  # pred.map <- pred.map[, !duplicated(t(pred.map))]
+  # If two thresholds are giving the same result reduce the burden
+  pred.map <- pred.map[, !duplicated(t(pred.map))]
 
   # Get rid of thresholds that are keeping too few predictors
   pred.map <- pred.map[, colSums(pred.map) >= min.features]
@@ -301,7 +301,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
   # Loop over K folds
   for (k in 1:K) {
-    # k <- 1
+    # k <- 5
 
     # Create fold data:
     Xtr <- ivs[part != k, , drop = FALSE]
@@ -384,12 +384,9 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
     )
   }
 
-  if(test == "LRT"){
+  if(test == "LRT" | test == "PR2"){
     # Mean of the likelihood ratio test statistics
     scor <- apply(map_kfcv, c(1, 2), mean, na.rm = FALSE)
-
-    # Put on the likelihood scale
-    scor <- exp(scor)
 
     # K-fold Cross-Validation solution
     kfcv_sol <- which(
@@ -399,7 +396,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
   }
 
-  if (test == "MSE") {
+  if (test == "MSE" | test == "BIC") {
     # Mean of the likelihood ratio test statistics
     scor <- apply(map_kfcv, c(1, 2), mean, na.rm = FALSE)
 
@@ -414,14 +411,14 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   thr.cv <- as.numeric(names(scor[kfcv_sol[1], kfcv_sol[2]]))
 
   # How many npcs have been selected?
-  Q.cv <- kfcv_sol[, "row"]
+  Q.cv <- as.numeric(kfcv_sol[, "row"])
 
   # Return
   return(
     list(
-      thr.cv = as.numeric(thr.cv),
-      thr = as.numeric(thrs_values),
-      Q.cv = as.numeric(Q.cv),
+      thr.cv = thr.cv,
+      thr = thrs_values,
+      Q.cv = Q.cv,
       scor = scor,
       pred.map = pred.map,
       pred.active = rownames(pred.map)[pred.map[, kfcv_sol[, "col"]]]
