@@ -147,7 +147,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   # Example inputs
   # dv <- mtcars[, 1]
   # ivs <- mtcars[, -1]
-  # thrs = c("LLS", "pseudoR2")[2]
+  # thrs = c("LLS", "pseudoR2", "normalized")[3]
   # nthrs = 10
   # fam <- c("gaussian", "binomial", "poisson")[1]
   # maxnpcs <- 5
@@ -310,7 +310,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
     yva <- dv[part == k]
 
     # Null model
-    glm.fit0 <- glm(yva ~ 1, family = fam)
+    glm_null_va <- glm(yva ~ 1, family = fam)
 
     # Loop over threshold values
     for (thr in 1:nthrs.eff) {
@@ -328,78 +328,83 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
         )
 
         # Perform PCA
-        svd_Xtr <- svd(Xtr_thr)
+        cur.svd <- mysvd(t(Xtr[, aset]), n.components = maxnpcs)
 
-        # Project training and validation data on the PCs
-        PCtra <- Xtr_thr %*% svd_Xtr$v
-        PCsva <- Xva_thr %*% svd_Xtr$v
+        # Make a temp validation object
+        xtemp <- t(Xva)[aset, , drop = FALSE]
+
+        # Center the temp data
+        xtemp <- t(scale(t(xtemp), center = cur.svd$feature.means, scale=FALSE))
+
+        # Produce components on the validation data
+        cur.v.all <- scale(t(xtemp) %*% cur.svd$u, center=FALSE, scale=cur.svd$d)
 
         # Check how many components are available (effective number)
         q.eff <- min(sum(aset), maxnpcs)
 
-        # Select the available PC scores
-        PCtra.eff <- PCtra[, 1:q.eff, drop = FALSE]
-        PCsva.eff <- PCsva[, 1:q.eff, drop = FALSE]
+        # Keep only the effective components
+        cur.v <- cur.v.all[, 1:q.eff, drop = FALSE]
+
+        # svd_Xtr <- svd(Xtr_thr)
+
+        # # Project training and validation data on the PCs
+        # PCtra <- Xtr_thr %*% svd_Xtr$v
+        # PCsva <- Xva_thr %*% svd_Xtr$v
+
+
+        # # Select the available PC scores
+        # PCtra.eff <- PCtra[, 1:q.eff, drop = FALSE]
+        # PCsva.eff <- PCsva[, 1:q.eff, drop = FALSE]
 
         # Compute the F-statistic for the possible additive PCRs
         for (Q in 1:q.eff) {
           # Q <- 1
 
-          # Train GLM model
-          glm_fit_tr <- glm(ytr ~ PCtra.eff[, 1:Q], family = fam)
-          glm_null_tr <- glm(ytr ~ 1, family = fam)
+          glmfit <- glm(yva ~ cur.v[, 1:Q], family = fam)
+
+          # # Train GLM model
+          # glm_fit_tr <- glm(ytr ~ PCtra.eff[, 1:Q], family = fam)
+          # glm_null_tr <- glm(ytr ~ 1, family = fam)
           
-          # Obtain prediction based on new data
-          yva_hat <- cbind(1, PCsva.eff[, 1:Q]) %*% coef(glm_fit_tr)
+          # # Obtain prediction based on new data
+          # yva_hat <- cbind(1, PCsva.eff[, 1:Q]) %*% coef(glm_fit_tr)
 
-          # Obtain validation residuals
-          r_va <- (yva - yva_hat)
+          # # Obtain validation residuals
+          # r_va <- (yva - yva_hat)
 
-          # Store the estimate of the sigma
-          s <- sqrt(sum(resid(glm_fit_tr)^2) / (length(ytr))) # maximum likelihood version
-          # s <- sqrt(sum(r_va^2) / (length(yva)))              # based on va
+          # # Store the estimate of the sigma
+          # s <- sqrt(sum(resid(glm_fit_tr)^2) / (length(ytr))) # maximum likelihood version
+          # # s <- sqrt(sum(r_va^2) / (length(yva)))              # based on va
 
-          # Compute validation data log-likelihood
-          loglik_mod <- -nrow(PCsva) / 2 * log(2 * pi) - nrow(PCsva) / 2 * log(s^2) - 1 / (2 * s^2) * sum(r_va^2)
+          # # Compute validation data log-likelihood
+          # loglik_mod <- -nrow(PCsva) / 2 * log(2 * pi) - nrow(PCsva) / 2 * log(s^2) - 1 / (2 * s^2) * sum(r_va^2)
 
-          # Compute null model log-likelihood on validation data
-          s_null <- sqrt(sum(resid(glm_null_tr)^2) / (length(ytr))) # maximum likelihood version
-          r_null <- yva - mean(ytr)
-          loglik_null <- -nrow(PCsva) / 2 * log(2 * pi) - nrow(PCsva) / 2 * log(s_null^2) - 1 / (2 * s_null^2) * sum(r_null^2)
+          # # Compute null model log-likelihood on validation data
+          # s_null <- sqrt(sum(resid(glm_null_tr)^2) / (length(ytr))) # maximum likelihood version
+          # r_null <- yva - mean(ytr)
+          # loglik_null <- -nrow(PCsva) / 2 * log(2 * pi) - nrow(PCsva) / 2 * log(s_null^2) - 1 / (2 * s_null^2) * sum(r_null^2)
 
           # Extract desired statistic
-          if (test == "LRT") {
-            # map_kfcv[Q, thr, k] <- as.numeric(- 2 * (logLik(glm_fit_tr0) - logLik(glm_fit_tr)))
-            map_kfcv[Q, thr, k] <- as.numeric(-2 * (loglik_null - loglik_mod))
-          }
           if (test == "F") {
-            # Compute residuals
-            Er <- TSS <- sum((yva - mean(ytr))^2) # baseline prediction error
-            Ef <- SSE <- sum((yva - yva_hat)^2)   # prediction error
-
-            # Compute degrees of freedom
-            dfR <- (nrow(PCsva) - 0 - 1) # for the restricted model
-            dfF <- (nrow(PCsva) - Q - 1) # for the full model
-
-            # Compute the f statistic
-            Fstat <- ((Er - Ef) / (dfR - dfF)) / (Ef / dfF)
-            map_kfcv[Q, thr, k] <- Fstat
-
-            # Estimate GLM models
-            # glm_null_va <- glm(yva ~ 1, family = fam)
-            # glm_mod_va <- glm(yva ~ PCsva.eff[, 1:Q], family = fam)
-
-            # Compute F statistic as in SPCR package
-            # map_kfcv[Q, thr, k] <- anova(glm_null_va, glm_mod_va, test = "F")$F[2]
+            # F statistic
+            map_kfcv[Q, thr, k] <- anova(glmfit, test = "F")$F[2]
+          }
+          if (test == "LRT") {
+            # Chi-square value is the likelihood ratio test
+            map_kfcv[Q, thr, k] <- lmtest::lrtest(glmfit)$Chi[2]
+          }
+          if (test == "AIC") {
+            # AIC from glmfit
+            map_kfcv[Q, thr, k] <- glmfit$aic
           }
           if (test == "PR2") {
-            map_kfcv[Q, thr, k] <- as.numeric(1 - exp(-2 / n * (loglik_mod - loglik_null)))
+            map_kfcv[Q, thr, k] <- as.numeric(1 - exp(-2 / nobs(glmfit) * (logLik(glmfit) - logLik(glm_null_va))))
           }
           if (test == "MSE") {
             map_kfcv[Q, thr, k] <- MLmetrics::MSE(y_pred = yva_hat, y_true = yva)
           }
           if (test == "BIC") {
-            map_kfcv[Q, thr, k] <- as.numeric(log(nrow(PCsva)) * (Q + 1 + 1) - 2 * loglik_mod)
+            map_kfcv[Q, thr, k] <- as.numeric(log(nobs(glmfit)) * (Q + 1 + 1) - 2 * logLik(glmfit))
           }
         }
       }
@@ -435,7 +440,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
 
   }
 
-  if (test == "MSE" | test == "BIC") {
+  if (test == "MSE" | test == "BIC" | test == "AIC") {
     # Mean of the likelihood ratio test statistics
     scor <- apply(map_kfcv, c(1, 2), mean, na.rm = FALSE)
 
@@ -486,22 +491,13 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   n <- length(y)
 
   # Compute vector of feature means
-  xbar <- x %*% rep(1 / n, n)
-
-  # Same as computing the row means
-  cbind(xbar, rowMeans(x))
+  xbar <- rowMeans(x)
 
   # Compute the diagonal of the cross-product matrix between variables
-  sxx <- ((x - as.vector(xbar))^2) %*% rep(1, n)
-
-  # Which is the mid step for variance
-  cbind(sxx, apply(x - as.vector(xbar), 1, var) * (n - 1))
+  sxx <- ((x - xbar)^2) %*% rep(1, n)
 
   # Compute the cross-product matrix between X and Y
-  sxy <- (x - as.vector(xbar)) %*% (y - mean(y))
-
-  # Which is the mid step for covariance between the two
-  cbind(sxx, apply(x - as.vector(xbar), 1, var) * (n - 1))
+  sxy <- (x - xbar) %*% (y - mean(y))
 
   # Total sum of squares
   syy <- sum((y - mean(y))^2)
@@ -737,6 +733,254 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   )
 }
 
+.bic.selection <- function(
+  dv, 
+  ivs, 
+  fam = "gaussian",
+  thrs = c("LLS", "pseudoR2", "normalized")[3],
+  nthrs = 10,
+  maxnpcs = 3,
+  test = c("LRT", "F", "MSE")[1],
+  max.features = ncol(ivs),
+  min.features = 5){
+
+  #  Example inputs
+  # dv <- mtcars[, 1]
+  # ivs <- mtcars[, -1]
+  # thrs = c("LLS", "pseudoR2", "normalized")[3]
+  # nthrs = 10
+  # fam <- c("gaussian", "binomial", "poisson")[1]
+  # maxnpcs <- 5
+  # K = 3
+  # test = c("LRT", "F", "MSE")[2]
+  # max.features = ncol(ivs)
+  # min.features = 1
+
+  # Sample size
+  n <- nrow(ivs)
+
+  # Fit null model
+  glm0 <- glm(dv ~ 1, family = fam)
+
+  # Fit univariate models
+  glm.fits <- lapply(1:ncol(ivs), function(j) {
+    glm(dv ~ ivs[, j], family = fam)
+  })
+
+  # Extract Log-likelihood values
+  ll0 <- as.numeric(logLik(glm0))
+  lls <- sapply(glm.fits, function(m) as.numeric(logLik(m)))
+
+  # Create active sets based on threshold type
+
+  if(thrs == "LLS"){
+
+    # Use the logLikelihoods as bivariate association scores
+    ascores <- lls
+
+    # Give it good names
+    names(ascores) <- colnames(ivs)
+
+    # Define the upper and lower bounds of the association
+    lower <- min(ascores)
+    upper <- max(ascores)
+
+  }
+
+  if(thrs == "pseudoR2"){
+
+    # Compute pseudo R-squared
+    CNR2 <- 1 - exp(-2 / n * (lls - ll0))
+
+    # Give it good names
+    names(CNR2) <- colnames(ivs)
+
+    # Make them correlation coefficients
+    ascores <- sqrt(CNR2)
+
+    # Define upper and lower bounds of the association
+    lower <- quantile(ascores, 1 - (max.features / ncol(ivs)))
+    upper <- quantile(ascores, 1 - (min.features / ncol(ivs)))
+
+  }
+
+  if (thrs == "normalized") {
+    
+    # Set objects to the required dimension
+    x <- t(as.matrix(ivs))
+    y <- dv
+    featurenames <- colnames(ivs)
+
+    # Empty
+    s0.perc <- NULL
+
+    # Sample size
+    n <- length(y)
+
+    # Compute vector of feature means
+    xbar <- x %*% rep(1 / n, n)
+
+    # Same as computing the row means
+    cbind(xbar, rowMeans(x))
+
+    # Compute the diagonal of the cross-product matrix between variables
+    sxx <- ((x - as.vector(xbar))^2) %*% rep(1, n)
+
+    # Which is the mid step for variance
+    cbind(sxx, apply(x - as.vector(xbar), 1, var) * (n - 1))
+
+    # Compute the cross-product matrix between X and Y
+    sxy <- (x - as.vector(xbar)) %*% (y - mean(y))
+
+    # Which is the mid step for covariance between the two
+    cbind(sxx, apply(x - as.vector(xbar), 1, var) * (n - 1))
+
+    # Total sum of squares
+    syy <- sum((y - mean(y))^2)
+
+    # Ratio of the two
+    numer <- sxy / sxx
+
+    # Compute sd?
+    sd <- sqrt((syy / sxx - numer^2) / (n - 2))
+
+    # add "fudge"(?) to the denominator
+    if (is.null(s0.perc)) {
+      fudge <- median(sd)
+    }
+    if (!is.null(s0.perc)) {
+      if (s0.perc >= 0) {
+        fudge <- quantile(sd, s0.perc)
+      }
+      if (s0.perc < 0) {
+        fudge <- 0
+      }
+    }
+
+    # Ratio between numerator and sd
+    tt <- numer / (sd + fudge)
+
+    # Store the normalized correlation scores
+    ascores <- abs(tt)[, 1]
+
+    # Define upper and lower bounds of the normalized correlation
+    lower <- quantile(abs(ascores), 1 - (max.features / nrow(x)))
+    upper <- quantile(abs(ascores), 1 - (min.features / nrow(x)))
+
+  }
+
+  # Define threshold values
+  thrs_values <- seq(from = lower, to = upper, length.out = nthrs)
+
+  # Create a map of active predictors based on threshold values
+  pred.map <- sapply(1:nthrs, function(a) ascores > thrs_values[a])
+
+  # Use thresholds as names
+  colnames(pred.map) <- round(thrs_values, 3)
+
+  # # If two thresholds are giving the same result reduce the burden
+  pred.map <- pred.map[, !duplicated(t(pred.map))]
+
+  # Get rid of thresholds that are keeping too few predictors
+  pred.map <- pred.map[, colSums(pred.map) >= min.features]
+
+  # Get rid of thresholds that are keeping too many predictors
+  pred.map <- pred.map[, colSums(pred.map) <= max.features]
+
+  # And update the effective number of the thresholds considered
+  nthrs.eff <- ncol(pred.map)
+  
+  # Create an object to store k-fold cross-validation log-likelihoods
+  map_fit <- array(
+    dim = c(maxnpcs, nthrs.eff),
+    dimnames = list(NULL, colnames(pred.map))
+  )
+
+  # Loop over K folds
+  # Null model
+  glm.fit0 <- glm(dv ~ 1, family = fam)
+
+  # Loop over threshold values
+  for (thr in 1:nthrs.eff) {
+    # thr <- 1
+    # Define the active set of predictors based on the current threshold value
+    aset <- pred.map[, thr]
+
+    # If there is more than 1 active variable
+    if (sum(aset) > 1) {
+      # Scale Xs
+      X_thr <- scale(ivs[, aset], center = TRUE, scale = TRUE)
+      
+      # Perform PCA
+      svd_X <- svd(X_thr)
+
+      # Project validation data on the PCs
+      PCsva <- X_thr %*% svd_X$v
+
+      # Check how many components are available (effective number)
+      q.eff <- min(sum(aset), maxnpcs)
+
+      # Select the PC scores that are available
+      PCsva.eff <- PCsva[, 1:q.eff, drop = FALSE]
+
+      # Compute the F-statistic for the possible additive PCRs
+      for (Q in 1:q.eff) {
+        # Q <- 1
+
+        # Estimate GLM models
+        glm.fit1 <- glm(dv ~ PCsva.eff[, 1:Q], family = fam)
+
+        # Extract desired statistic
+        if (test == "LRT") {
+          map_fit[Q, thr] <- as.numeric(-2 * (logLik(glm.fit0) - logLik(glm.fit1)))
+        }
+        if (test == "F") {
+          map_fit[Q, thr] <- anova(glm.fit0, glm.fit1, test = "F")$F[2]
+        }
+        if (test == "PR2") {
+          map_fit[Q, thr] <- as.numeric(1 - exp(-2 / n * (logLik(glm.fit1) - logLik(glm.fit0))))
+        }
+        if (test == "MSE") {
+          map_fit[Q, thr] <- MLmetrics::MSE(y_pred = predict(glm.fit1), y_true = yva)
+        }
+        if (test == "BIC") {
+          map_fit[Q, thr] <- as.numeric(log(nobs(glm.fit1)) * (Q + 1 + 1) - 2 * logLik(glm.fit1))
+        }
+
+      }
+    }
+  }
+
+  # # Which threshold has been selected?
+  # thr.cv <- sol[, "thr"]
+
+  # # How many npcs have been selected?
+  # Q.cv <- sol[, "PCs"]
+
+  # Solution BIC
+  kfcv_sol <- which(
+    map_fit == min(map_fit, na.rm = TRUE), # TODO: min or max?
+    arr.ind = TRUE
+  )
+
+  # Which threshold has been selected?
+  thr.cv <- as.numeric(colnames(map_fit)[kfcv_sol[, 2]])
+
+  # How many npcs have been selected?
+  Q.cv <- as.numeric(kfcv_sol[1, 1])
+
+  # Return
+  return(
+    list(
+      thr.cv = thr.cv,
+      thr = thrs_values,
+      Q.cv = Q.cv,
+      scor = map_fit,
+      pred.map = pred.map,
+      pred.active = rownames(pred.map)[pred.map[, thr.cv]]
+    )
+  )
+}
 
 # Full CV approach -------------------------------------------------------------
 
@@ -750,14 +994,15 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   K = 5,
   test = c("LRT", "F", "MSE")[2],
   max.features = ncol(ivs),
-  min.features = 5
+  min.features = 5,
+  oneSE = TRUE
   ) {
 
   # Example inputs
   # dv <- mtcars[, 1]
   # ivs <- mtcars[, -1]
   # thrs = c("LLS", "pseudoR2", "normalized")[3]
-  # nthrs = 10
+  # nthrs = 5
   # fam <- c("gaussian", "binomial", "poisson")[1]
   # maxnpcs <- 5
   # K = 2
@@ -1012,7 +1257,6 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   }
 
   # Average selected score across folds
-
   if(test == "F"){
     # average F scores on a more symmetrical scale
     lscor <- apply(log(map_kfcv), c(1, 2), mean, na.rm = FALSE)
@@ -1036,7 +1280,6 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
       scor == max(scor, na.rm = TRUE), # TODO: min or max?
       arr.ind = TRUE
     )
-
   }
 
   if (test == "MSE" | test == "BIC" | test == "AIC") {
@@ -1048,6 +1291,41 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
       scor == min(scor, na.rm = TRUE),
       arr.ind = TRUE
     )
+  }
+
+  # Compute the standard errors of the cross-validation measures
+  scor.sd <- apply(map_kfcv, c(1, 2), sd, na.rm = FALSE) / sqrt(K)
+
+  # Compute the standard error of the CVE for the best model
+  scor.se <- scor.sd[kfcv_sol[1], kfcv_sol[2]]
+
+  if (oneSE == TRUE) {
+    # Logical matrix storing which values bigger than sol - 1SE
+    if (test == "F" | test == "LRT" | test == "PR2") {
+      scor.s1se <- scor >= scor[kfcv_sol[1], kfcv_sol[2]] - scor.se
+    }
+    # Logical matrix storing which values smaller than sol + 1SE
+    if (test == "MSE" | test == "BIC" | test == "AIC") {
+      scor.s1se <- scor <= scor[kfcv_sol[1], kfcv_sol[2]] + scor.se
+    }
+
+    # Logical matrix excluding solution
+    scor.ns <- scor != scor[kfcv_sol[1], kfcv_sol[2]]
+
+    # Create a list of candidate models that are within 1 standard error of the best
+    candidates <- which(scor.s1se & scor.ns, arr.ind = TRUE)
+
+    # Are there such solutions?
+    if(nrow(candidates) > 1){
+      # Select the solutions with lowest npcs (small number of components)
+      candidates <- candidates[candidates[, "row"] == min(candidates[, "row"]), , drop = FALSE]
+
+      # Select the solutions with highest threshold (small number of predictors)
+      candidates <- candidates[candidates[, "col"] == max(candidates[, "col"]), , drop = FALSE]
+      
+      # Select the solution with the smallest measure out of the candidate models
+      kfcv_sol <- candidates
+    }
   }
 
   # Which threshold has been selected?
@@ -1063,12 +1341,31 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
       thr = thrs_values,
       Q.cv = Q.cv,
       scor = scor,
+      scor.sd = scor.sd,
+      scor.se = scor.se,
       pred.map = pred.map,
       pred.active = rownames(pred.map)[pred.map[, kfcv_sol[, "col"]]]
     )
   )
 }
 
+# helper functions -------------------------------------------------------------
+
+# mean ignoring NAs
+mean.na <- function(x) {
+  mean(x[!is.na(x)])
+}
+
+# sd ignore NAs
+se.na <- function(x) {
+  val <- NA
+  if (sum(!is.na(x)) > 0) {
+    val <- sqrt(var(x[!is.na(x)]) / sum(!is.na(x)))
+  }
+  return(val)
+}
+
+# Special SVD function used by the superpc function
 mysvd <- function(x,
                   n.components = NULL) {
   # finds PCs of matrix x
@@ -1108,31 +1405,60 @@ mysvd <- function(x,
   }
 }
 
-# Define two functions that compute the mean and the sd ignoring the NAs
-mean.na <- function(x) {
-  mean(x[!is.na(x)])
+# Normal log-likelihood
+loglike_norm <- function(r, s){
+  # Define n based on the residuals
+  n <- length(r)
+
+  # Compute the log-likelihood
+  -n / 2 * log(2 * pi) - n / 2 * log(s^2) - 1 / (2 * s^2) * sum(r^2)
 }
 
-se.na <- function(x) {
-  val <- NA
-  if (sum(!is.na(x)) > 0) {
-    val <- sqrt(var(x[!is.na(x)]) / sum(!is.na(x)))
-  }
-  return(val)
-}
+returnSol <- function(mat_score = array(),
+                      minmax = c(1, 2)[2],
+                      oneSE = TRUE,
+                      K = dim(mat_score)[3]) {
+  # Example inputs
+  # set.seed(2040)
+  # mat_score <- array(rnorm(10 * 10 * 15), dim = c(10, 10, 15))
+  # minmax <- c(1, 2)[2]
+  # oneSE <- TRUE
+  # K <- dim(mat_score)[3]
 
-# Get test statistics given model of interest
-getTestStat <- function(glm.fit, glm.fit0 = NULL, test = "LRT", y_true = NULL) {
-  # glm.fit0 <- lm(mpg ~ 1, data = mtcars)
-  # glm.fit <- lm(mpg ~ ., data = mtcars)
-  if (test == "LRT") {
-    test.stat <- as.numeric(logLik(glm.fit0)) - as.numeric(logLik(glm.fit))
+  # Mean of the score array
+  scor <- apply(mat_score, c(1, 2), mean, na.rm = FALSE)
+
+  # K-fold Cross-Validation solution
+  kfcv_sol <- which(
+    scor == range(scor, na.rm = TRUE)[minmax], # TODO: min or max?
+    arr.ind = TRUE
+  )
+
+  # Compute the standard deviation of the cross-validation measures
+  scor.sd <- apply(mat_score, c(1, 2), sd, na.rm = FALSE)
+
+  # Compute the standard error of the CVE for the best model
+  scor.se <- scor.sd[kfcv_sol[1], kfcv_sol[2]] / sqrt(length(mat_score))
+
+  # Logical matrix storing which values are smaller than sol + 1SE
+  scor.s1se <- scor >= scor[kfcv_sol[1], kfcv_sol[2]] - scor.se
+  scor.s1se
+
+  # Logical matrix excluding solution
+  scor.ns <- scor != scor[kfcv_sol[1], kfcv_sol[2]]
+
+  # Create a list of candidate models that are within 1 standard deviation of the target
+  candidates <- cbind(
+    which(scor.s1se & scor.ns, arr.ind = TRUE),
+    value = na.omit(scor[scor.s1se & scor.ns])
+  )
+
+  # Check candidates is not empty
+  if (nrow(candidates) > 0) {
+    # Select the solution with the smallest measure out of the candidate models
+    kfcv_sol <- candidates[which.min(candidates[, "value"]), 1:2]
   }
-  if (test == "F") {
-    test.stat <- anova(glm.fit, glm.fit0, test = "F")$F[2]
-  }
-  if (test == "MSE") {
-    test.stat <- MLmetrics::MSE(y_pred = predict(glm.fit), y_true = y_true)
-  }
-  return(test.stat)
+
+  # return
+  return(kfcv_sol)
 }
