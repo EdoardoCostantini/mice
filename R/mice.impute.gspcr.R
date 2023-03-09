@@ -1006,7 +1006,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   # fam <- c("gaussian", "binomial", "poisson")[1]
   # maxnpcs <- 5
   # K = 2
-  # test = c("LRT", "F", "MSE")[3]
+  # test = c("LRT", "F", "MSE")[2]
   # max.features = ncol(ivs)
   # min.features = 1
 
@@ -1257,96 +1257,30 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   }
 
   # Average selected score across folds
-  if(test == "F"){
-    # average F scores on a more symmetrical scale
-    lscor <- apply(log(map_kfcv), c(1, 2), mean, na.rm = FALSE)
+  scor.list <- average.scores(cv_array = map_kfcv, test = test)
 
-    # revert to correct scale
-    scor <- exp(lscor)
-
-    # K-fold Cross-Validation solution
-    kfcv_sol <- which(
-      scor == max(scor, na.rm = TRUE), # TODO: min or max?
-      arr.ind = TRUE
-    )
-  }
-
-  if(test == "LRT" | test == "PR2"){
-    # Mean of the likelihood ratio test statistics
-    scor <- apply(map_kfcv, c(1, 2), mean, na.rm = FALSE)
-
-    # K-fold Cross-Validation solution
-    kfcv_sol <- which(
-      scor == max(scor, na.rm = TRUE), # TODO: min or max?
-      arr.ind = TRUE
-    )
-  }
-
-  if (test == "MSE" | test == "BIC" | test == "AIC") {
-    # Mean of the likelihood ratio test statistics
-    scor <- apply(map_kfcv, c(1, 2), mean, na.rm = FALSE)
-
-    # K-fold Cross-Validation solution
-    kfcv_sol <- which(
-      scor == min(scor, na.rm = TRUE),
-      arr.ind = TRUE
-    )
-  }
-
-  # Compute the standard errors of the cross-validation measures
-  scor.sd <- apply(map_kfcv, c(1, 2), sd, na.rm = FALSE) / sqrt(K)
-
-  # Compute the standard error of the CVE for the best model
-  scor.se <- scor.sd[kfcv_sol[1], kfcv_sol[2]]
-
-  if (oneSE == TRUE) {
-    # Logical matrix storing which values bigger than sol - 1SE
-    if (test == "F" | test == "LRT" | test == "PR2") {
-      scor.s1se <- scor >= scor[kfcv_sol[1], kfcv_sol[2]] - scor.se
-    }
-    # Logical matrix storing which values smaller than sol + 1SE
-    if (test == "MSE" | test == "BIC" | test == "AIC") {
-      scor.s1se <- scor <= scor[kfcv_sol[1], kfcv_sol[2]] + scor.se
-    }
-
-    # Logical matrix excluding solution
-    scor.ns <- scor != scor[kfcv_sol[1], kfcv_sol[2]]
-
-    # Create a list of candidate models that are within 1 standard error of the best
-    candidates <- which(scor.s1se & scor.ns, arr.ind = TRUE)
-
-    # Are there such solutions?
-    if(nrow(candidates) > 1){
-      # Select the solutions with lowest npcs (small number of components)
-      candidates <- candidates[candidates[, "row"] == min(candidates[, "row"]), , drop = FALSE]
-
-      # Select the solutions with highest threshold (small number of predictors)
-      candidates <- candidates[candidates[, "col"] == max(candidates[, "col"]), , drop = FALSE]
-      
-      # Select the solution with the smallest measure out of the candidate models
-      kfcv_sol <- candidates
-    }
-  }
-
-  # Which threshold has been selected?
-  thr.cv <- as.numeric(names(scor[kfcv_sol[1], kfcv_sol[2]]))
-
-  # How many npcs have been selected?
-  Q.cv <- as.numeric(kfcv_sol[, "row"])
+  # Make a decision based on the CV measures
+  cv_sol <- cv.choice(
+    scor = scor.list$scor,
+    scor.lwr = scor.list$scor.lwr,
+    scor.upr = scor.list$scor.upr,
+    K = K,
+    test = test
+  )
 
   # Return
-  return(
-    list(
-      thr.cv = thr.cv,
-      thr = thrs_values,
-      Q.cv = Q.cv,
-      scor = scor,
-      scor.sd = scor.sd,
-      scor.se = scor.se,
-      pred.map = pred.map,
-      pred.active = rownames(pred.map)[pred.map[, kfcv_sol[, "col"]]]
-    )
+  list(
+    thr         = thrs_values,
+    thr.cv      = thrs_values[cv_sol$default[2]],
+    thr.cv.1se  = thrs_values[cv_sol$oneSE[2]],
+    Q.cv        = cv_sol$default[1],
+    Q.cv.1se    = cv_sol$oneSE[1],
+    scor        = scor.list$scor,
+    scor.lwr    = scor.list$scor.lwr,
+    scor.upr    = scor.list$scor.upr,
+    pred.map    = pred.map
   )
+
 }
 
 # helper functions -------------------------------------------------------------
@@ -1414,51 +1348,108 @@ loglike_norm <- function(r, s){
   -n / 2 * log(2 * pi) - n / 2 * log(s^2) - 1 / (2 * s^2) * sum(r^2)
 }
 
-returnSol <- function(mat_score = array(),
-                      minmax = c(1, 2)[2],
-                      oneSE = TRUE,
-                      K = dim(mat_score)[3]) {
-  # Example inputs
-  # set.seed(2040)
-  # mat_score <- array(rnorm(10 * 10 * 15), dim = c(10, 10, 15))
-  # minmax <- c(1, 2)[2]
-  # oneSE <- TRUE
-  # K <- dim(mat_score)[3]
+average.scores <- function(cv_array, test) {
+  # Description: given an array of npcs * thrsh * K dimensions, returns its average
+  # Example internals:
+  # - cv_array = array(abs(rnorm(10 * 3 * 2)), dim = c(10, 3, 2))
+  # - test = "F"
 
-  # Mean of the score array
-  scor <- apply(mat_score, c(1, 2), mean, na.rm = FALSE)
+  # How many folds?
+  K <- tail(dim(cv_array), 1)
 
-  # K-fold Cross-Validation solution
-  kfcv_sol <- which(
-    scor == range(scor, na.rm = TRUE)[minmax], # TODO: min or max?
-    arr.ind = TRUE
-  )
+  # Average selected score across folds
+  if (test == "F") {
+    # Average the log for a more symmetrical scale
+    lscor <- apply(log(cv_array), c(1, 2), mean, na.rm = FALSE)
 
-  # Compute the standard deviation of the cross-validation measures
-  scor.sd <- apply(mat_score, c(1, 2), sd, na.rm = FALSE)
+    # Compute standard error for each 
+    # TODO: check this standard error computation
+    lscor.sd <- apply(log(cv_array), c(1, 2), sd, na.rm = FALSE) / sqrt(K)
 
-  # Compute the standard error of the CVE for the best model
-  scor.se <- scor.sd[kfcv_sol[1], kfcv_sol[2]] / sqrt(length(mat_score))
+    # Revert to original scale and compute upper lower bounds
+    scor <- exp(lscor)
+    scor.upr <- exp(lscor + lscor.sd)
+    scor.lwr <- exp(lscor - lscor.sd)
+  } else {
+    # Average the results
+    scor <- apply(cv_array, c(1, 2), mean, na.rm = FALSE)
 
-  # Logical matrix storing which values are smaller than sol + 1SE
-  scor.s1se <- scor >= scor[kfcv_sol[1], kfcv_sol[2]] - scor.se
-  scor.s1se
+    # Compute the standard errors
+    scor.sd <- apply(cv_array, c(1, 2), sd, na.rm = FALSE) / sqrt(K)
 
-  # Logical matrix excluding solution
-  scor.ns <- scor != scor[kfcv_sol[1], kfcv_sol[2]]
-
-  # Create a list of candidate models that are within 1 standard deviation of the target
-  candidates <- cbind(
-    which(scor.s1se & scor.ns, arr.ind = TRUE),
-    value = na.omit(scor[scor.s1se & scor.ns])
-  )
-
-  # Check candidates is not empty
-  if (nrow(candidates) > 0) {
-    # Select the solution with the smallest measure out of the candidate models
-    kfcv_sol <- candidates[which.min(candidates[, "value"]), 1:2]
+    # Compute the upper and lower bounds
+    scor.upr <- scor + scor.sd
+    scor.lwr <- scor - scor.sd
   }
 
-  # return
-  return(kfcv_sol)
+  # Return
+  list(
+    scor = scor,
+    scor.upr = scor.upr,
+    scor.lwr = scor.lwr
+  )
+}
+
+cv.choice <- function(scor, scor.lwr, scor.upr, K, test) {
+  # Description: given an matrix of npcs * thrsh, returns the best choice based
+  #              on the type of test (best overall and 1se rule versions)
+  # Example internals:
+  # scor = matrix(c(1, 2, 3, 4, 5, 6), nrow = 3, ncol = 2)
+  # test = "F"
+  # K = 10
+  # scor.lwr = matrix(c(1, 2, 3, 4, 5, 6) - 1.5, nrow = 3, ncol = 2)
+  # scor.upr = matrix(c(1, 2, 3, 4, 5, 6) + 1.5, nrow = 3, ncol = 2)
+
+  # Decide if you need the max or the min
+  if (test == "F" | test == "LRT" | test == "PR2") {
+    maxmin <- "max"
+  }
+  if (test == "AIC" | test == "BIC" | test == "MSE") {
+    maxmin <- "min"
+  }
+
+  # Extract the max or min value in the matrix
+  choice <- eval(parse(text = paste0(maxmin, "(scor, na.rm = TRUE)")))
+
+  # Return the coordinates of the choice
+  cv.default <- which(scor == choice, arr.ind = TRUE)
+
+  # Reverse engineer the standard error of the decision CV
+  cv.default.se <- (scor - scor.lwr)[cv.default]
+
+  # Logical matrix storing which values bigger than sol - 1SE
+  if (test == "F" | test == "LRT" | test == "PR2") {
+    scor.s1se <- scor >= choice - cv.default.se
+  }
+  # Logical matrix storing which values smaller than sol + 1SE
+  if (test == "MSE" | test == "BIC" | test == "AIC") {
+    scor.s1se <- scor <= choice + cv.default.se
+  }
+
+  # Logical matrix excluding solution
+  scor.ns <- scor != scor[cv.default]
+
+  # Create a list of candidate models that are within 1 standard error of the best
+  candidates <- which(scor.s1se & scor.ns, arr.ind = TRUE)
+
+  # Are there such solutions?
+  if (nrow(candidates) >= 1) {
+    # Select the solutions with lowest npcs (small number of components)
+    candidates <- candidates[candidates[, "row"] == min(candidates[, "row"]), , drop = FALSE]
+
+    # Select the solutions with highest threshold (small number of predictors)
+    candidates <- candidates[candidates[, "col"] == max(candidates[, "col"]), , drop = FALSE]
+
+    # Select the solution with the smallest measure out of the candidate models
+    cv.1se <- candidates
+  } else {
+    cv.1se <- cv.default
+  }
+
+  return(
+    list(
+      default = cv.default,
+      oneSE = cv.1se
+    )
+  )
 }
