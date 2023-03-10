@@ -1004,7 +1004,7 @@ mice.impute.gspcr <- function(y, ry, x, wy = NULL,
   # thrs = c("LLS", "pseudoR2", "normalized")[3]
   # nthrs = 5
   # fam <- c("gaussian", "binomial", "poisson")[1]
-  # maxnpcs <- 5
+  # maxnpcs <- 10
   # K = 2
   # test = c("LRT", "F", "MSE")[2]
   # max.features = ncol(ivs)
@@ -1433,16 +1433,19 @@ cv.choice <- function(scor, scor.lwr, scor.upr, K, test) {
   # Create a list of candidate models that are within 1 standard error of the best
   candidates <- which(scor.s1se & scor.ns, arr.ind = TRUE)
 
+  # Attach value
+  candidates <- cbind(candidates, values = scor[candidates[, 1:2]])
+
   # Are there such solutions?
   if (nrow(candidates) >= 1) {
-    # Select the solutions with lowest npcs (small number of components)
-    candidates <- candidates[candidates[, "row"] == min(candidates[, "row"]), , drop = FALSE]
-
-    # Select the solutions with highest threshold (small number of predictors)
+    # Select the solutions with highest threshold (smallest number of predictors)
     candidates <- candidates[candidates[, "col"] == max(candidates[, "col"]), , drop = FALSE]
 
+    # Select the solutions with lowest npcs (smallest number of components)
+    candidates <- candidates[candidates[, "row"] == min(candidates[, "row"]), , drop = FALSE]
+
     # Select the solution with the smallest measure out of the candidate models
-    cv.1se <- candidates
+    cv.1se <- candidates[, -3]
   } else {
     cv.1se <- cv.default
   }
