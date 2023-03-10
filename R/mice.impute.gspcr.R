@@ -1348,6 +1348,7 @@ loglike_norm <- function(r, s){
   -n / 2 * log(2 * pi) - n / 2 * log(s^2) - 1 / (2 * s^2) * sum(r^2)
 }
 
+# Averaging results from CV
 average.scores <- function(cv_array, test) {
   # Description: given an array of npcs * thrsh * K dimensions, returns its average
   # Example internals:
@@ -1362,8 +1363,7 @@ average.scores <- function(cv_array, test) {
     # Average the log for a more symmetrical scale
     lscor <- apply(log(cv_array), c(1, 2), mean, na.rm = FALSE)
 
-    # Compute standard error for each 
-    # TODO: check this standard error computation
+    # Compute standard error for each
     lscor.sd <- apply(log(cv_array), c(1, 2), sd, na.rm = FALSE) / sqrt(K)
 
     # Revert to original scale and compute upper lower bounds
@@ -1371,7 +1371,7 @@ average.scores <- function(cv_array, test) {
     scor.upr <- exp(lscor + lscor.sd)
     scor.lwr <- exp(lscor - lscor.sd)
   } else {
-    # Average the results
+    # Average normal results
     scor <- apply(cv_array, c(1, 2), mean, na.rm = FALSE)
 
     # Compute the standard errors
@@ -1390,6 +1390,7 @@ average.scores <- function(cv_array, test) {
   )
 }
 
+# Extracting CV the choices
 cv.choice <- function(scor, scor.lwr, scor.upr, K, test) {
   # Description: given an matrix of npcs * thrsh, returns the best choice based
   #              on the type of test (best overall and 1se rule versions)
