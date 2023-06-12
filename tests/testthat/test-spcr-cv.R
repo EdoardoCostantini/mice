@@ -366,6 +366,20 @@ ggplot(df, aes(Var2, value, group = factor(Var1), label = factor(Var1))) +
 
 # Estimate SPCR with my full CV method -----------------------------------------
 
+# Use the functions with a given method
+out1 <- .spcr.cv.full(
+    dv = y,
+    ivs = X,
+    fam = "gaussian",
+    nthrs = 20,
+    maxnpcs = 10,
+    K = 10,
+    test = "F",
+    thrs = "normalized",
+    min.features = 1,
+    max.features = ncol(X)
+)
+
 # Vector of desired methods
 vmeth <- c("LRT", "F", "AIC", "BIC", "PR2", "MSE")#[1:2]
 
@@ -378,12 +392,13 @@ out <- lapply(
         ivs = X,
         fam = "gaussian",
         nthrs = 20,
-        maxnpcs = 40,
+        maxnpcs = 10,
         K = 10,
         test = meth,
         thrs = "normalized",
         min.features = 1,
-        max.features = ncol(X)
+        max.features = ncol(X),
+        oneSE = TRUE
     )
 })
 
@@ -399,9 +414,8 @@ plots <- lapply(
         df <- reshape2::melt(out[[meth]]$scor) # the function melt reshapes it from wide to long
 
         # Add error bars
-        df$sds <- reshape2::melt(out[[meth]]$scor.sd)[, "value"] # the function melt reshapes it from wide to long
-        df$low <- df$value - df$sds
-        df$high <- df$value + df$sds
+        df$low <- reshape2::melt(out[[meth]]$scor.lwr)[, "value"]
+        df$high <- reshape2::melt(out[[meth]]$scor.upr)[, "value"]
 
     # Make plot
     store_plot <- df %>%
@@ -410,7 +424,7 @@ plots <- lapply(
             aes(Var2, value, group = factor(Var1), label = factor(Var1))
         ) +
         geom_line() +
-        geom_point() +
+        # geom_point() +
         geom_errorbar(aes(ymin = low, ymax = high),
             width = .2
         ) +
@@ -426,7 +440,7 @@ plots <- lapply(
 # Plots
 (plots[[1]] + plots[[2]] + plots[[3]]) / (plots[[4]] + plots[[5]] + plots[[6]])
 
-# Solutions
+# default Solutions
 res <- lapply(
     1:length(vmeth),
     function(meth) {
@@ -438,10 +452,26 @@ res <- lapply(
     }
 )
 
+# 1se solutions
+res.1se <- lapply(
+    1:length(vmeth),
+    function(meth) {
+        c(
+            thr_value = out[[meth]]$thr.cv.1se,
+            thr_number = which(out[[meth]]$thr.cv.1se == round(out[[meth]]$thr, 3)),
+            Q = out[[meth]]$Q.cv.1se
+        )
+    }
+)
+
 # Present them neatly
 res <- do.call(rbind, res)
 rownames(res) <- vmeth
+res.1se <- do.call(rbind, res.1se)
+rownames(res.1se) <- vmeth
+
 res
+res.1se
 
 # SPCR using CHull -------------------------------------------------------------
 
