@@ -100,6 +100,7 @@ S-Plus (4th ed)}. Springer, Berlin.
 
 Other univariate imputation functions: 
 \code{\link{mice.impute.cart}()},
+\code{\link{mice.impute.gspcr.logreg}()},
 \code{\link{mice.impute.gspcr.norm}()},
 \code{\link{mice.impute.lasso.logreg}()},
 \code{\link{mice.impute.lasso.norm}()},

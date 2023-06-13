@@ -94,6 +94,7 @@ Association, 101(473), 119-137.
 \seealso{
 Other univariate imputation functions: 
 \code{\link{mice.impute.cart}()},
+\code{\link{mice.impute.gspcr.logreg}()},
 \code{\link{mice.impute.lasso.logreg}()},
 \code{\link{mice.impute.lasso.norm}()},
 \code{\link{mice.impute.lasso.select.logreg}()},
