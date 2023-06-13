@@ -1,4 +1,4 @@
-# Test 2: Simple use -----------------------------------------------------------
+# Test 1: Simple use -----------------------------------------------------------
 
 # Define the test context
 context("mice.impute.gspcr.norm: simple use")
