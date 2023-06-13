@@ -33,13 +33,17 @@ model is fitted. The \code{ry} generally distinguishes the observed
 \item{wy}{Logical vector of length \code{length(y)}. A \code{TRUE} value
 indicates locations in \code{y} for which imputations are created.}
 
-\item{nthrs}{Number of threshold values to be used for cross-validation.}
+\item{thrs}{character vector of length 1 storing the type of threshold to be used (see below for available options)}
 
-\item{K}{The number of folds for the cross-validation of the association-threshold.}
+\item{fit_measure}{character vector of length 1 indicating the type of fit measure to be used in the cross-validation procedure}
+
+\item{nthrs}{numeric vector of length 1 storing the number of threshold values to be used}
+
+\item{npcs_range}{numeric vector defining the numbers of principal components to be used}
+
+\item{K}{numeric vector of length 1 storing the number of folds for the K-fold cross-validation procedure}
 
 \item{...}{Other named arguments.}
-
-\item{maxnpcs}{The maximum number of PCs allowed.}
 }
 \value{
 Vector with imputed data, the same type as \code{y}, and of length
@@ -56,7 +60,7 @@ The method consists of the following steps:
 with replacement from the observed cases \code{y[ry]}, and stores in x* the
 corresponding values from \code{x[ry, ]}.
 \item Compute bivariate association measure \eqn{\theta} between the observed part of the variable under and every potential predictor in the data.
-\item Collect all the predictors with \eqn{\theta} higher than some threshold \eqn{\theta}_t and define them as the active set of predictors.
+\item Collect all the predictors with \eqn{\theta} higher than some threshold \eqn{\theta_t} and define them as the active set of predictors.
 \item Regress \code{y*} on the Principal components computed on the active set.
 \item Calculate the estimated residual standard error \code{sigma} based on the residuals obtained from the PC regression and \code{npcs - 1} degrees of freedom.
 \item Obtain predicted values for \code{y} based on the fitted PC regression
@@ -70,7 +74,9 @@ Then, the range between the minimum and maximum value the bivairate association 
 Every association measure value is used to define a different active set.
 For every active set, all requested PCs are computed and used to predict the dependent variable. If the sets npcs to 1, 3, and 5, then the dependent variable is regressed on 1 component, then on 1 to 3 components and finally on 1 to 5 components.
 The combination of active set and npcs that returns the optimal value of a given fit measure is then selected.
-This selection of the threshold value \eqn{\theta}_t and the number of components Q can be done through K-fold cross-validation by setting the value of the folds to anything larger than 1.
+This selection of the threshold value \eqn{\theta_t} and the number of components Q can be done through K-fold cross-validation by setting the value of the folds to anything larger than 1.
+
+For details on the admissible values for \code{thrs}, \code{npcs_range}, and \code{fit_measure} consult the help file for the underlying gspcr engine [gspcr::cv_gspcr()].
 
 The user can specify a \code{predictorMatrix} in the \code{mice} call
 to define which predictors are provided to this univariate imputation method.
