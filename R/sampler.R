@@ -206,6 +206,9 @@ sampler.univ <- function(data, r, where, type, formula, method, yname, k,
   # get the model matrix
   x <- obtain.design(data, formula)
 
+  # Store the attributes of x
+  x_attributes <- attributes(x)
+
   # expand type vector to model matrix, remove intercept
   if (calltype == "type") {
     type <- type[labels(terms(formula))][attr(x, "assign")]
@@ -238,6 +241,9 @@ sampler.univ <- function(data, r, where, type, formula, method, yname, k,
   if (ncol(x) != length(type)) {
     stop("Internal error: length(type) != number of predictors")
   }
+
+  # Re-assign contrast attribute to x
+  attributes(x)$contrasts <- x_attributes$contrasts
 
   # here we go
   f <- paste("mice.impute", method, sep = ".")
