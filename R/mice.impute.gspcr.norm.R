@@ -1,0 +1,125 @@
+#' Imputation by generalized supervised principal component regression
+#'
+#' Imputes univariate missing data using generalized supervised principal component regression.
+#'
+#' @aliases mice.impute.gspcr gspcr
+#' @inheritParams mice.impute.norm.boot
+#' @param maxnpcs The maximum number of PCs allowed.
+#' @param K The number of folds for the cross-validation of the association-threshold.
+#' @param nthrs Number of threshold values to be used for cross-validation.
+#' @return Vector with imputed data, the same type as \code{y}, and of length
+#' \code{sum(wy)}
+#' @details
+#' Imputation of \code{y} by supervised principal component regression (Bair, 2006).
+#' The method consists of the following steps:
+#' \enumerate{
+#' \item For a given \code{y} variable under imputation, draw a bootstrap version y*
+#' with replacement from the observed cases \code{y[ry]}, and stores in x* the
+#' corresponding values from \code{x[ry, ]}.
+#' \item Compute bivariate association measure \eqn{\theta} between the observed part of the variable under and every potential predictor in the data.
+#' \item Collect all the predictors with \eqn{\theta} higher than some threshold \eqn{\theta}_t and define them as the active set of predictors.
+#' \item Regress \code{y*} on the Principal components computed on the active set.
+#' \item Calculate the estimated residual standard error \code{sigma} based on the residuals obtained from the PC regression and \code{npcs - 1} degrees of freedom.
+#' \item Obtain predicted values for \code{y} based on the fitted PC regression
+#' and the new data \code{x[wy, ]}
+#' \item Obtain imputations by adding noise scaled by \code{sigma} to these
+#' predictions.
+#' }
+#'
+#' The user specifies a number of association values to be checked as threshold values and a range of number of components to be checked.
+#' Then, the range between the minimum and maximum value the bivairate association measure between y and the x is divided into equally spaced steps to produce the desired number of association measures.
+#' Every association measure value is used to define a different active set.
+#' For every active set, all requested PCs are computed and used to predict the dependent variable. If the sets npcs to 1, 3, and 5, then the dependent variable is regressed on 1 component, then on 1 to 3 components and finally on 1 to 5 components.
+#' The combination of active set and npcs that returns the optimal value of a given fit measure is then selected.
+#' This selection of the threshold value \eqn{\theta}_t and the number of components Q can be done through K-fold cross-validation by setting the value of the folds to anything larger than 1.
+#'
+#' The user can specify a \code{predictorMatrix} in the \code{mice} call
+#' to define which predictors are provided to this univariate imputation method.
+#' Therefore, users may force the exclusion of a predictor from a given
+#' imputation model by specifying a \code{0} entry.
+#' However, a non-zero entry does not guarantee the variable will be used,
+#' as this decision is ultimately made based on the k-fold cross-validation
+#' procedure.
+#'
+#' @author Edoardo Costantini, 2022
+#' @references
+#'
+#' Bair, E., Hastie, T., Paul, D., & Tibshirani, R. (2006). Prediction by
+#' supervised principal components. Journal of the American Statistical
+#' Association, 101(473), 119-137.
+#'
+#' @family univariate imputation functions
+#' @keywords imputation
+#' @export
+mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
+                                   thrs = "PR2",
+                                   fit_measure = "BIC",
+                                   nthrs = 10,
+                                   npcs_range = 1:3,
+                                   K = 1,
+                                   ...) {
+  # Set up ---------------------------------------------------------------------
+
+  if (is.null(wy)) wy <- !ry
+
+  # Revert categorical predictors to factors if needed -------------------------
+  # TODO
+
+  # Bootstrap sample for model uncertainty -------------------------------------
+
+  # Sample size of responses
+  n1 <- sum(ry)
+
+  # Define bootstrap sample
+  s <- sample(n1, n1, replace = TRUE)
+
+  # Create bootstrap sample observed predictors
+  dotxobs <- x[ry, , drop = FALSE][s, ]
+
+  # Create bootstrap sample of observed values of variable under imputation
+  dotyobs <- y[ry][s]
+
+  # Train GSPCR ----------------------------------------------------------------
+  gscpr_fit <- gspcr::cv_gspcr(
+    dv = dotyobs,
+    ivs = dotxobs,
+    fam = "gaussian",
+    thrs = thrs,
+    nthrs = nthrs,
+    npcs_range = npcs_range,
+    K = K,
+    fit_measure = fit_measure,
+    min_features = 1,
+    max_features = ncol(dotxobs),
+    oneSE = TRUE
+  )
+
+  # Estimate GSPCR -------------------------------------------------------------
+  gspcr_est <- gspcr::est_gspcr(
+    dv = dotyobs,
+    ivs = dotxobs,
+    fam = "gaussian",
+    ndim = max(2, gscpr_fit$sol_table[1, "Q"]),
+    active_set = gscpr_fit$pred_map[, gscpr_fit$sol_table[1, "thr_number"]]
+  )
+
+  # Obtain imputations ---------------------------------------------------------
+
+  # Compute residuals
+  dotyobs_res <- dotyobs - predict(object = gspcr_est)
+
+  # Compute error variance
+  sigma <- sqrt(sum(dotyobs_res^2) / (n1 - length(coef(gspcr_est$glm_fit))))
+
+  # Obtain predictions
+  y_hat <- predict(
+    object = gspcr_est,
+    newdata = x[!ry, , drop = FALSE]
+  )
+
+  # Add noise for imputation uncertainty
+  imputes <- y_hat + rnorm(sum(wy)) * sigma
+
+  # Return imputations
+  return(imputes)
+}
