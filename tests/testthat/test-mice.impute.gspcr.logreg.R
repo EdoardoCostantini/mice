@@ -33,5 +33,60 @@ testthat::expect_equal(length(imps_t1), sum(wy))
 # Imputations are in a factor
 testthat::expect_true(is.factor(imps_t1))
 
+# Correct number of imputations
+testthat::expect_equal(length(imps_t1), sum(wy))
+
 # Factor as right levels
 testthat::expect_equal(levels(imps_t1), levels(y))
+
+# Test 2: Perfect prediction ---------------------------------------------------
+
+# Generate some predictors
+n <- 1e2
+p <- 10
+Sigma <- matrix(.7, nrow = p, ncol = p)
+diag(Sigma) <- 1
+x <- MASS::mvrnorm(n, rep(0, p), Sigma)
+
+# Create a dv with a perfect predictor
+y <- factor(x[, 1] < 0, labels = c("y", "n"))
+
+# Missing values
+y[sample(1:n, n * .3)] <- NA
+
+# Define response indicator
+ry <- !is.na(y)
+
+# Define missingness indicator
+wy <- !ry
+
+# Imputation well behaved
+wellBehaved <- tryCatch(
+    expr = {
+        mice.impute.gspcr.logreg(y = y, ry = ry, x = x[, -1])
+    },
+    error = function(e) {
+        e
+    },
+    warning = function(w) {
+        w
+    }
+)
+
+# Imputation perfect prediction
+perfectPred <- tryCatch(
+    expr = {
+        mice.impute.gspcr.logreg(y = y, ry = ry, x = x)
+    },
+    error = function(e) {
+        e
+    },
+    warning = function(w) {
+        w
+    }
+)
+
+# Test
+test_that("Complete separation results in same class as well behaved case", {
+    expect_true(all.equal(class(wellBehaved), class(perfectPred)))
+})

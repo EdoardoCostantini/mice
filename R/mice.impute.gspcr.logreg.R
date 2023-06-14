@@ -36,6 +36,18 @@ mice.impute.gspcr.logreg <- function(y, ry, x, wy = NULL,
     # Create wy if not there
     if (is.null(wy)) wy <- !ry
 
+    # Augment data to evade perfect prediction ---------------------------------
+
+    # Augment 
+    aug <- augment(y, ry, x, wy)
+
+    # Update objects
+    x <- aug$x
+    y <- aug$y
+    ry <- aug$ry
+    wy <- aug$wy
+    w <- aug$w
+
     # Revert categorical predictors to factors for PCAmix ----------------------
     x <- revert.factors(x)
 
