@@ -31,4 +31,4 @@ imps_t1 <- mice.impute.gspcr.polyreg(y, ry, x, nthrs = 3)
 imp_polyreg_standard <- mice.impute.polyreg(y, ry, x)
 
 # Test: returns same class as standard polr
-testthat::expect_equal(class(imp_polr_standard), class(imps_t1))
+testthat::expect_equal(class(imp_polyreg_standard), class(imps_t1))
