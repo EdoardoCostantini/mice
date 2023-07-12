@@ -65,6 +65,8 @@ Other univariate imputation functions:
 \code{\link{mice.impute.cart}()},
 \code{\link{mice.impute.gspcr.logreg}()},
 \code{\link{mice.impute.gspcr.norm}()},
+\code{\link{mice.impute.gspcr.polr}()},
+\code{\link{mice.impute.gspcr.polyreg}()},
 \code{\link{mice.impute.lasso.logreg}()},
 \code{\link{mice.impute.lasso.select.logreg}()},
 \code{\link{mice.impute.lasso.select.norm}()},
