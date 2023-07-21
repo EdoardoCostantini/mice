@@ -36,6 +36,9 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     # Create wy if not there
     if (is.null(wy)) wy <- !ry
 
+    # Preserve attributes of x
+    x_attributes <- attributes(x)
+
     # escape with same impute if the dependent does not vary
     cat.has.all.obs <- table(y[ry]) == sum(ry)
     if (any(cat.has.all.obs)) {
@@ -55,6 +58,11 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     w <- aug$w
 
     # Revert categorical predictors to factors for PCAmix ----------------------
+        
+    # Re-assign attributes to x
+    attributes(x)$contrasts <- x_attributes$contrasts
+
+    # Apply revert function
     x <- revert.factors(x)
 
     # Bootstrap sample for model uncertainty -----------------------------------
