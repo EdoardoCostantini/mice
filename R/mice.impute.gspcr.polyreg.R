@@ -2,7 +2,7 @@
 #'
 #' Imputes univariate missing values on an unorded categorical (nominal) variable using generalized supervised principal component proportional odds regression.
 #'
-#' @aliases mice.impute.gspcr.polr gspcr.polr
+#' @aliases mice.impute.gspcr.polyreg gspcr.polyreg
 #' @inheritParams mice.impute.norm.boot
 #' @param thrs character vector of length 1 storing the type of threshold to be used (see below for available options)
 #' @param nthrs numeric vector of length 1 storing the number of threshold values to be used

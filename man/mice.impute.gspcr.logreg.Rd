@@ -63,6 +63,7 @@ Association, 101(473), 119-137.
 Other univariate imputation functions: 
 \code{\link{mice.impute.cart}()},
 \code{\link{mice.impute.gspcr.norm}()},
+\code{\link{mice.impute.gspcr.pmm}()},
 \code{\link{mice.impute.gspcr.polr}()},
 \code{\link{mice.impute.gspcr.polyreg}()},
 \code{\link{mice.impute.lasso.logreg}()},

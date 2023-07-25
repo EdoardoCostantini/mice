@@ -85,6 +85,11 @@ imputation model by specifying a \code{0} entry.
 However, a non-zero entry does not guarantee the variable will be used,
 as this decision is ultimately made based on the k-fold cross-validation
 procedure.
+
+When using any gspcr-based method, it is recommended to set the following arguments in the mice call
+- \code{eps = 0}, to bypasses \code{remove.lindep()}
+- \code{threshold = 1L}, to bypass collinearity checks
+These aspects are already handled by gspcr.
 }
 \references{
 Bair, E., Hastie, T., Paul, D., & Tibshirani, R. (2006). Prediction by
@@ -95,6 +100,7 @@ Association, 101(473), 119-137.
 Other univariate imputation functions: 
 \code{\link{mice.impute.cart}()},
 \code{\link{mice.impute.gspcr.logreg}()},
+\code{\link{mice.impute.gspcr.pmm}()},
 \code{\link{mice.impute.gspcr.polr}()},
 \code{\link{mice.impute.gspcr.polyreg}()},
 \code{\link{mice.impute.lasso.logreg}()},

@@ -44,6 +44,11 @@
 #' However, a non-zero entry does not guarantee the variable will be used,
 #' as this decision is ultimately made based on the k-fold cross-validation
 #' procedure.
+#' 
+#' When using any gspcr-based method, it is recommended to set the following arguments in the mice call
+#' - \code{eps = 0}, to bypasses \code{remove.lindep()}
+#' - \code{threshold = 1L}, to bypass collinearity checks
+#' These aspects are already handled by gspcr.
 #'
 #' @author Edoardo Costantini, 2022
 #' @references
