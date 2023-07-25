@@ -70,6 +70,9 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
     # Create bootstrap sample observed predictors
     dotxobs <- x[ry, , drop = FALSE][s, ]
 
+    # Identify possible constants after bootstrap
+    keeplist <- apply(sapply(dotxobs, as.numeric), 2, var) != 0L
+
     # Create bootstrap sample of observed values of variable under imputation
     dotyobs <- y[ry][s]
 
@@ -78,7 +81,7 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
     # Train model to tune parameters
     gscpr_fit <- gspcr::cv_gspcr(
         dv = dotyobs,
-        ivs = dotxobs,
+        ivs = dotxobs[, keeplist, drop = FALSE],
         fam = "cumulative",
         thrs = thrs,
         nthrs = nthrs,
@@ -93,7 +96,7 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
     # Estimate model with tuned parameters
     gspcr_est <- gspcr::est_gspcr(
         dv = dotyobs,
-        ivs = dotxobs,
+        ivs = dotxobs[, keeplist, drop = FALSE],
         fam = "cumulative",
         ndim = gscpr_fit$sol_table[1, "Q"],
         active_set = gscpr_fit$pred_map[, gscpr_fit$sol_table[1, "thr_number"]]
@@ -104,7 +107,7 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
     # Obtain predictions
     post <- predict(
         object = gspcr_est,
-        newdata = x[!ry, , drop = FALSE]
+        newdata = x[!ry, keeplist, drop = FALSE]
     )
 
     # Reshape as matrix if there was a single value

@@ -87,7 +87,7 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     # Train GSPCR --------------------------------------------------------------
     gscpr_fit <- gspcr::cv_gspcr(
         dv = dotyobs,
-        ivs = dotxobs[, keeplist],
+        ivs = dotxobs[, keeplist, drop = FALSE],
         fam = "gaussian",
         thrs = thrs,
         nthrs = nthrs,
@@ -102,7 +102,7 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     # Estimate GSPCR -----------------------------------------------------------
     gspcr_est <- gspcr::est_gspcr(
         dv = dotyobs,
-        ivs = dotxobs[, keeplist],
+        ivs = dotxobs[, keeplist, drop = FALSE],
         fam = "gaussian",
         ndim = max(2, gscpr_fit$sol_table[1, "Q"]),
         active_set = gscpr_fit$pred_map[, gscpr_fit$sol_table[1, "thr_number"]]
