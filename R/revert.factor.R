@@ -41,7 +41,7 @@ revert.factors <- function(x){
         # Create the factor
         x_factor <- factor(
             x_collapsed,
-            labels = paste0("lvl_", 1:length(unique(x_collapsed)))
+            labels = paste0("lvl_", seq_along(1:length(unique(x_collapsed))))
             )
 
         # Drop the original model matrix columns
