@@ -86,7 +86,7 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
   dotxobs <- x[ry, , drop = FALSE][s, ]
 
   # Identify possible constants after bootstrap
-  keeplist <- apply(sapply(dotxobs, as.numeric), 2, var) != 0L
+  keeplist <- apply(apply(dotxobs, 2, as.numeric), 2, var) != 0L
 
   # Create bootstrap sample of observed values of variable under imputation
   dotyobs <- y[ry][s]
