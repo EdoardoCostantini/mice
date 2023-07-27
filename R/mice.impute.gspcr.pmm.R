@@ -42,9 +42,9 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     # Revert categorical predictors to factors for PCAmix ----------------------
     x <- revert.factors(x)
 
-    # Exclude cases in pmm fashion ---------------------------------------------
+    # Prepare data in pmm fashion ----------------------------------------------
 
-    # Craete an id vector for exclusion
+    # Create an id vector for exclusion
     id.ex <- !ry | !y %in% exclude
 
     # leave out the excluded vector y's
@@ -60,11 +60,17 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     # leave out the exclude vector x's
     ry <- ry[id.ex]
 
-    # if applicable adjust wy to match exclude
+    # If applicable adjust wy to match and exclude
     if (is.null(wy)) {
         wy <- !ry
     } else {
         wy <- wy[id.ex]
+    }
+
+    # Transform factor y to integer
+    ynum <- y
+    if (is.factor(y)) {
+        ynum <- as.integer(y)
     }
 
     # Bootstrap sample for model uncertainty -----------------------------------
@@ -79,7 +85,7 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     dotxobs <- x[ry, , drop = FALSE][s, ]
 
     # Create bootstrap sample of observed values of variable under imputation
-    dotyobs <- y[ry][s]
+    dotyobs <- ynum[ry][s]
 
     # Train GSPCR --------------------------------------------------------------
     gscpr_fit <- gspcr::cv_gspcr(
