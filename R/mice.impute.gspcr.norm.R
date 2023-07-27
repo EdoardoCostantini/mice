@@ -85,35 +85,24 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
   # Create bootstrap sample observed predictors
   dotxobs <- x[ry, , drop = FALSE][s, ]
 
-  # Identify possible constants after bootstrap
-  keeplist <- apply(apply(dotxobs, 2, as.numeric), 2, var) != 0L
-
   # Create bootstrap sample of observed values of variable under imputation
   dotyobs <- y[ry][s]
 
   # Train GSPCR ----------------------------------------------------------------
   gscpr_fit <- gspcr::cv_gspcr(
     dv = dotyobs,
-    ivs = dotxobs[, keeplist, drop = FALSE],
+    ivs = dotxobs,
     fam = "gaussian",
     thrs = thrs,
     nthrs = nthrs,
     npcs_range = npcs_range,
     K = K,
     fit_measure = fit_measure,
-    min_features = 1,
-    max_features = ncol(dotxobs),
-    oneSE = TRUE
+    min_features = 1
   )
 
   # Estimate GSPCR -------------------------------------------------------------
-  gspcr_est <- gspcr::est_gspcr(
-    dv = dotyobs,
-    ivs = dotxobs[, keeplist, drop = FALSE],
-    fam = "gaussian",
-    ndim = max(2, gscpr_fit$sol_table[1, "Q"]),
-    active_set = gscpr_fit$pred_map[, gscpr_fit$sol_table[1, "thr_number"]]
-  )
+  gspcr_est <- gspcr::est_gspcr(gscpr_fit)
 
   # Obtain imputations ---------------------------------------------------------
 
@@ -126,7 +115,7 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
   # Obtain predictions
   y_hat <- predict(
     object = gspcr_est,
-    newdata = x[!ry, keeplist, drop = FALSE]
+    newdata = x[!ry, ]
   )
 
   # Add noise for imputation uncertainty

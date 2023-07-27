@@ -30,6 +30,21 @@ test_that("Excludes donors", {
     expect_false(all(c(15:25) %in% mice.impute.gspcr.pmm(y, ry, x, exclude = c(15:25))))
 })
 
+# Test 3: Works if bootstrap leads to constant variable ------------------------
+
+# Define a constant X
+x <- iris[1:50, -1]
+
+# Define some y variable
+y <- iris[1:50, 1]
+
+# give it some NAs
+y[1:10] <- NA
+ry <- !is.na(y)
+
+# Test returns requested length when constant variable is still in
+expect_equal(length(mice.impute.gspcr.pmm(y, ry, x)), sum(!ry))
+
 # Test 2: Works in mice function -----------------------------------------------
 
 # Mice call works
