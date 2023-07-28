@@ -23,37 +23,52 @@ revert.factors <- function(x){
     mm_factor <- names(mm_contrasts)
 
     # Make it a data.frame
-    x <- data.frame(x)
+    x_df <- data.frame(x)
 
     # For every factor location re-create the original factor
     for(i in seq_along(mm_factor)){
+
         # Define columns containing information
-        index_columns <- grepl(mm_factor[i], colnames(x))
+        index_columns <- grepl(mm_factor[i], colnames(x_df))
 
         # Collapse values of the model matrix
         x_collapsed <- apply(
-            x[, index_columns, drop = FALSE],
+            x_df[, index_columns, drop = FALSE],
             1,
             paste0,
             collapse = ""
         )
 
-        # Create the factor
-        x_factor <- factor(
-            x_collapsed,
-            labels = paste0("lvl_", seq_along(1:length(unique(x_collapsed))))
+        # Define number of categories
+        ncat <- length(unique(x_collapsed))
+
+        # What contrast is it?
+        contr_type <- mm_contrasts[[mm_factor[i]]]
+
+        # Evaluate the log-likelihood of new data under this model
+        codes <- do.call(
+            what = contr_type,
+            args = list(
+                n = ncat
             )
+        )
+
+        # Collapse codes to make them matchable
+        code_collapse <- apply(codes, 1, paste0, collapse = "")
+
+        # Create the factor
+        x_factor <- factor(match(x_collapsed, code_collapse))
 
         # Drop the original model matrix columns
-        x <- x[, !index_columns]
+        x_df <- x_df[, !index_columns]
 
         # Add the reconstructed factor variable
-        x <- cbind(x, x_factor)
+        x_df <- cbind(x_df, x_factor)
 
         # Rename it
-        colnames(x)[ncol(x)] <- paste0(mm_factor[i])
+        colnames(x_df)[ncol(x_df)] <- paste0(mm_factor[i])
     }
 
     # Return result
-    x
+    x_df
 }

@@ -21,11 +21,13 @@ x <- obtain.design(preds)
 # Run the imputation method with this model matrix as X input
 x_mm_reverse <- revert.factors(x)
 
-# Compute a frequency table
+# Nominal factor is recovered exactly
 freq_table <- table(x_mm_reverse$Species, preds$Species)
+testthat::expect_true(all(freq_table[upper.tri(freq_table)] == 0))
 
-# Check only 3 values are not 0 (i.e. correct grouping)
-testthat::expect_true(sum(freq_table != 0) == 3)
+# Binary factor is recovered exactly
+freq_table <- table(x_mm_reverse$Sepal.Width, preds$Sepal.Width)
+testthat::expect_true(all(freq_table[upper.tri(freq_table)] == 0))
 
 # Test 2: Nothing happens if there are no contrasts ----------------------------
 
