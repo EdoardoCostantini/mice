@@ -40,7 +40,7 @@ revert.factors <- function(x){
         )
 
         # Define number of categories
-        ncat <- length(unique(x_collapsed))
+        ncat <- sum(index_columns) + 1
 
         # What contrast is it?
         contr_type <- mm_contrasts[[mm_factor[i]]]
