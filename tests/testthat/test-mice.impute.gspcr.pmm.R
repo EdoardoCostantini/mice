@@ -56,7 +56,7 @@ mids_gspcr_pmm <- mice(
     ridge = 0, 
     eps = 0, # bypasses remove.lindep()
     threshold = 1L,
-    printFlag = TRUE,
+    printFlag = FALSE,
     seed = 1234
 )
 

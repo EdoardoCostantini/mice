@@ -242,8 +242,11 @@ sampler.univ <- function(data, r, where, type, formula, method, yname, k,
     stop("Internal error: length(type) != number of predictors")
   }
 
-  # Re-assign contrast attribute to x
+  # Re-assign contrast and assign_better attribute to x
   attributes(x)$contrasts <- x_attributes$contrasts
+  attributes(x)$assign_better <- mm.column.variable.map(
+    data = data[, -which(colnames(data) == j), drop = FALSE]
+  )
 
   # here we go
   f <- paste("mice.impute", method, sep = ".")

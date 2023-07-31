@@ -61,6 +61,7 @@ x <- x[, -1L, drop = FALSE]
 
 # Re-assign contrast attributes to x
 attributes(x)$contrasts <- x_attributes$contrasts
+attributes(x)$assign_better <- mm.column.variable.map(data = data)
 
 # Use univariate imputation model
 imps_t2 <- mice.impute.gspcr.norm(y, ry, x)
