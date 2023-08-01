@@ -36,29 +36,6 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
     # Create wy if not there
     if (is.null(wy)) wy <- !ry
 
-    # Preserve attributes of x
-    x_attributes <- attributes(x)
-
-    # Augment data to evade perfect prediction ---------------------------------
-
-    # Augment
-    aug <- augment(y, ry, x, wy)
-
-    # Update objects
-    x <- aug$x
-    y <- aug$y
-    ry <- aug$ry
-    wy <- aug$wy
-    w <- aug$w
-
-    # Revert categorical predictors to factors for PCAmix ----------------------
-    
-    # Re-assign attributes to x
-    attributes(x)$contrasts <- x_attributes$contrasts
-
-    # Apply revert function
-    x <- revert.factors(x)
-
     # Bootstrap sample for model uncertainty -----------------------------------
 
     # Sample size of responses

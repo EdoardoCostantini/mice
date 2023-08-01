@@ -206,9 +206,6 @@ sampler.univ <- function(data, r, where, type, formula, method, yname, k,
   # get the model matrix
   x <- obtain.design(data, formula)
 
-  # Store the attributes of x
-  x_attributes <- attributes(x)
-
   # expand type vector to model matrix, remove intercept
   if (calltype == "type") {
     type <- type[labels(terms(formula))][attr(x, "assign")]
@@ -242,11 +239,10 @@ sampler.univ <- function(data, r, where, type, formula, method, yname, k,
     stop("Internal error: length(type) != number of predictors")
   }
 
-  # Re-assign contrast and assign_better attribute to x
-  attributes(x)$contrasts <- x_attributes$contrasts
-  attributes(x)$assign_better <- mm.column.variable.map(
-    data = data[, -which(colnames(data) == j), drop = FALSE]
-  )
+  # If the imputation method is a gspcr method, provide the updated data matrix in original data.frame format
+  if(grepl("gspcr", method)){
+    x <- data[, -which(colnames(data) == j), drop = FALSE]
+  }
 
   # here we go
   f <- paste("mice.impute", method, sep = ".")

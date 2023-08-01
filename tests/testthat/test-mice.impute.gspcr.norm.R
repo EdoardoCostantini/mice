@@ -47,22 +47,6 @@ ry <- !is.na(y)
 # Define missingness indicator
 wy <- !ry
 
-# put things together in a data.frame
-data <- data.frame(x)
-
-# get the model matrix as in mice
-x <- obtain.design(data)
-
-# Store the attributes of x
-x_attributes <- attributes(x)
-
-#remove intercept
-x <- x[, -1L, drop = FALSE]
-
-# Re-assign contrast attributes to x
-attributes(x)$contrasts <- x_attributes$contrasts
-attributes(x)$assign_better <- mm.column.variable.map(data = data)
-
 # Use univariate imputation model
 imps_t2 <- mice.impute.gspcr.norm(y, ry, x)
 

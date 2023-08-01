@@ -39,8 +39,6 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
                                   donors = 5L,
                                   exclude = -99999999,
                                   ...) {
-    # Revert categorical predictors to factors for PCAmix ----------------------
-    x <- revert.factors(x)
 
     # Prepare data in pmm fashion ----------------------------------------------
 
