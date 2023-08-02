@@ -41,12 +41,14 @@ testthat::expect_equal(levels(imps_t1), levels(y))
 
 # Test 2: Perfect prediction ---------------------------------------------------
 
+set.seed(20042)
+
 # Generate some predictors
 n <- 1e2
 p <- 10
 Sigma <- matrix(.7, nrow = p, ncol = p)
 diag(Sigma) <- 1
-x <- MASS::mvrnorm(n, rep(0, p), Sigma)
+x <- data.frame(MASS::mvrnorm(n, rep(0, p), Sigma))
 
 # Create a dv with a perfect predictor
 y <- factor(x[, 1] < 0, labels = c("y", "n"))
@@ -60,33 +62,8 @@ ry <- !is.na(y)
 # Define missingness indicator
 wy <- !ry
 
-# Imputation well behaved
-wellBehaved <- tryCatch(
-    expr = {
-        mice.impute.gspcr.logreg(y = y, ry = ry, x = x[, -1])
-    },
-    error = function(e) {
-        e
-    },
-    warning = function(w) {
-        w
-    }
-)
+# Run imputation 
+imps <- suppressMessages(mice.impute.gspcr.logreg(y = y, ry = ry, x = x))
 
-# Imputation perfect prediction
-perfectPred <- tryCatch(
-    expr = {
-        mice.impute.gspcr.logreg(y = y, ry = ry, x = x)
-    },
-    error = function(e) {
-        e
-    },
-    warning = function(w) {
-        w
-    }
-)
-
-# Test
-test_that("Complete separation results in same class as well behaved case", {
-    expect_true(all.equal(class(wellBehaved), class(perfectPred)))
-})
+# Returns imputations as expected (perfect prediction handled within gspcr)
+testthat::expect_true(length(imps) == sum(wy))
