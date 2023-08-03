@@ -32,3 +32,34 @@ imp_polyreg_standard <- mice.impute.polyreg(y, ry, x)
 
 # Test: returns same class as standard polr
 testthat::expect_equal(class(imp_polyreg_standard), class(imps_t1))
+
+# Test 2: bootstrap leads to empty levels in input y ---------------------------
+
+# define an example predictor set
+x <- iris[, -ncol(iris)]
+
+# define an example dependent variable
+y <- iris$Species
+
+# add an empty level
+levels(y) <- c(levels(iris$Species), "empty")
+
+# make missingness
+y[sample(1:nrow(iris), nrow(iris) * .1)] <- NA
+
+# Define response indicator
+ry <- !is.na(y)
+
+# Define missingness indicator
+wy <- !ry
+
+# Use univariate imputation model
+imps <- tryCatch(
+    expr = mice.impute.gspcr.polyreg(y, ry, x, nthrs = 3),
+    error = function(e) {
+        e
+    }
+)
+
+# Test the outcome is not an error
+testthat::expect_false("error" %in% class(imps))

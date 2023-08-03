@@ -39,7 +39,7 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     # escape with same impute if the dependent does not vary
     cat.has.all.obs <- table(y[ry]) == sum(ry)
     if (any(cat.has.all.obs)) {
-        return(rep(levels(fy)[cat.has.all.obs], sum(wy)))
+        return(rep(levels(y)[cat.has.all.obs], sum(wy)))
     }
 
     # Bootstrap sample for model uncertainty -----------------------------------
@@ -54,7 +54,7 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     dotxobs <- x[ry, , drop = FALSE][s, ]
 
     # Create bootstrap sample of observed values of variable under imputation
-    dotyobs <- y[ry][s]
+    dotyobs <- droplevels(as.factor(y[ry][s]))
 
     # GSPCR --------------------------------------------------------------------
 
@@ -87,11 +87,8 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
         post <- matrix(post, nrow = 1, ncol = length(post))
     }
 
-    # Make sure y is a factor
-    fy <- as.factor(y)
-
     # Count the number of unique values in y
-    nc <- length(levels(fy))
+    nc <- nlevels(dotyobs)
 
     # Sample from a uniform distribution as many values as unique values in y
     un <- rep(runif(sum(wy)), each = nc)
@@ -108,7 +105,7 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     idx <- 1 + apply(draws, 2, sum)
 
     # Revert to characters
-    imputes <- levels(fy)[idx]
+    imputes <- levels(dotyobs)[idx]
 
     # Return
     imputes
