@@ -67,3 +67,16 @@ imps <- suppressMessages(mice.impute.gspcr.logreg(y = y, ry = ry, x = x))
 
 # Returns imputations as expected (perfect prediction handled within gspcr)
 testthat::expect_true(length(imps) == sum(wy))
+
+# Test 3: Escape with same input if bootstrap causes constant ------------------
+
+# Force constant y to mimic bootstrap result
+y_no <- y[y == "n" | is.na(y)]
+ry_no <- !is.na(y_no)
+x_no <- x[y == "n" | is.na(y), ]
+
+# Run imputation
+imps <- mice.impute.gspcr.logreg(y = y_no, ry = ry_no, x = x_no)
+
+# Test is the same as observed values of input imputations as expected (perfect prediction handled within gspcr)
+testthat::expect_equal(imps, y_no[ry_no])

@@ -63,3 +63,17 @@ imps <- tryCatch(
 
 # Test the outcome is not an error
 testthat::expect_false("error" %in% class(imps))
+
+# Test 3: Escape with same input if bootstrap causes constant ------------------
+
+# Force constant y to mimic the bootstrap result
+x_no <- iris[1:50, -ncol(iris)]
+y_no <- iris[1:50, "Species"]
+y_no[sample(1:50, 50 * .1)] <- NA
+ry_no <- !is.na(y_no)
+
+# Run imputation
+imps <- mice.impute.gspcr.polyreg(y = y_no, ry = ry_no, x = x_no)
+
+# Test is the same as observed values of input imputations as expected (perfect prediction handled within gspcr)
+testthat::expect_equal(imps, y_no[ry_no])

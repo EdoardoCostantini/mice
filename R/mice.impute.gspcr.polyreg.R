@@ -36,12 +36,6 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     # Create wy if not there
     if (is.null(wy)) wy <- !ry
 
-    # escape with same impute if the dependent does not vary
-    cat.has.all.obs <- table(y[ry]) == sum(ry)
-    if (any(cat.has.all.obs)) {
-        return(rep(levels(y)[cat.has.all.obs], sum(wy)))
-    }
-
     # Bootstrap sample for model uncertainty -----------------------------------
 
     # Sample size of responses
@@ -55,6 +49,12 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
 
     # Create bootstrap sample of observed values of variable under imputation
     dotyobs <- droplevels(as.factor(y[ry][s]))
+
+    # escape with same impute if the dependent does not vary
+    cat.has.all.obs <- table(dotyobs) == sum(ry)
+    if (any(cat.has.all.obs)) {
+        return(y[ry])
+    }
 
     # GSPCR --------------------------------------------------------------------
 

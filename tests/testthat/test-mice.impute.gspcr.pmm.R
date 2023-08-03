@@ -45,7 +45,7 @@ ry <- !is.na(y)
 # Test returns requested length when constant variable is still in
 expect_equal(length(mice.impute.gspcr.pmm(y, ry, x)), sum(!ry))
 
-# Test 2: Works in mice function -----------------------------------------------
+# Test 4: Works in mice function -----------------------------------------------
 
 # Mice call works
 mids_gspcr_pmm <- mice(
@@ -62,3 +62,17 @@ mids_gspcr_pmm <- mice(
 
 # Check resulting object is a mids object
 expect_equal(class(mids_gspcr_pmm), "mids")
+
+# Test 5: Escape with same input if bootstrap causes constant ------------------
+
+# Force constant y to mimic the bootstrap result
+x_3 <- GSPCRexdata$X$cont[GSPCRexdata$y$ord == 3, ]
+y_3 <- GSPCRexdata$y$ord[GSPCRexdata$y$ord == 3]
+y_3[sample(1:length(y_3), length(y_3) * .1)] <- NA
+ry_3 <- !is.na(y_3)
+
+# Run imputation
+imps <- mice.impute.gspcr.pmm(y = y_3, ry = ry_3, x = x_3)
+
+# Test is the same as observed values of input imputations as expected (perfect prediction handled within gspcr)
+testthat::expect_equal(imps, y_3[ry_3])

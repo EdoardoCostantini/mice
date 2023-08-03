@@ -50,6 +50,12 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
     # Create bootstrap sample of observed values of variable under imputation
     dotyobs <- droplevels(as.factor(y[ry][s]))
 
+    # escape with same impute if the dependent does not vary
+    cat.has.all.obs <- table(dotyobs) == sum(ry)
+    if (any(cat.has.all.obs)) {
+        return(y[ry])
+    }
+
     # GSPCR --------------------------------------------------------------------
 
     # Train model to tune parameters
