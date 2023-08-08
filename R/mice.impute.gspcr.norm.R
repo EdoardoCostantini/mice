@@ -71,9 +71,6 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
 
   if (is.null(wy)) wy <- !ry
 
-  # Revert categorical predictors to factors for PCAmix ------------------------
-  x <- revert.factors(x)
-
   # Bootstrap sample for model uncertainty -------------------------------------
 
   # Sample size of responses

@@ -36,35 +36,6 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     # Create wy if not there
     if (is.null(wy)) wy <- !ry
 
-    # Preserve attributes of x
-    x_attributes <- attributes(x)
-
-    # escape with same impute if the dependent does not vary
-    cat.has.all.obs <- table(y[ry]) == sum(ry)
-    if (any(cat.has.all.obs)) {
-        return(rep(levels(fy)[cat.has.all.obs], sum(wy)))
-    }
-
-    # Augment data to evade perfect prediction ---------------------------------
-
-    # Augment
-    aug <- augment(y, ry, x, wy)
-
-    # Update objects
-    x <- aug$x
-    y <- aug$y
-    ry <- aug$ry
-    wy <- aug$wy
-    w <- aug$w
-
-    # Revert categorical predictors to factors for PCAmix ----------------------
-        
-    # Re-assign attributes to x
-    attributes(x)$contrasts <- x_attributes$contrasts
-
-    # Apply revert function
-    x <- revert.factors(x)
-
     # Bootstrap sample for model uncertainty -----------------------------------
 
     # Sample size of responses
@@ -77,7 +48,13 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     dotxobs <- x[ry, , drop = FALSE][s, ]
 
     # Create bootstrap sample of observed values of variable under imputation
-    dotyobs <- y[ry][s]
+    dotyobs <- droplevels(as.factor(y[ry][s]))
+
+    # escape with same impute if the dependent does not vary
+    cat.has.all.obs <- table(dotyobs) == sum(ry)
+    if (any(cat.has.all.obs)) {
+        return(y[ry])
+    }
 
     # GSPCR --------------------------------------------------------------------
 
@@ -110,11 +87,8 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
         post <- matrix(post, nrow = 1, ncol = length(post))
     }
 
-    # Make sure y is a factor
-    fy <- as.factor(y)
-
     # Count the number of unique values in y
-    nc <- length(levels(fy))
+    nc <- nlevels(dotyobs)
 
     # Sample from a uniform distribution as many values as unique values in y
     un <- rep(runif(sum(wy)), each = nc)
@@ -131,7 +105,7 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
     idx <- 1 + apply(draws, 2, sum)
 
     # Revert to characters
-    imputes <- levels(fy)[idx]
+    imputes <- levels(dotyobs)[idx]
 
     # Return
     imputes

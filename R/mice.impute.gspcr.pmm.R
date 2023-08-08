@@ -39,8 +39,6 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
                                   donors = 5L,
                                   exclude = -99999999,
                                   ...) {
-    # Revert categorical predictors to factors for PCAmix ----------------------
-    x <- revert.factors(x)
 
     # Prepare data in pmm fashion ----------------------------------------------
 
@@ -86,6 +84,11 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
 
     # Create bootstrap sample of observed values of variable under imputation
     dotyobs <- ynum[ry][s]
+
+    # escape with same input if the dependent does not vary
+    if (var(dotyobs) == 0) {
+        return(y[ry])
+    }
 
     # Train GSPCR --------------------------------------------------------------
     gscpr_fit <- gspcr::cv_gspcr(
