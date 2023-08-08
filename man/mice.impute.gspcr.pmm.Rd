@@ -13,7 +13,7 @@ mice.impute.gspcr.pmm(
   thrs = "PR2",
   fit_measure = "BIC",
   nthrs = 10,
-  npcs_range = 1:3,
+  npcs_range = 1:5,
   K = 1,
   donors = 5L,
   exclude = -99999999,
