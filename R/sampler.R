@@ -250,6 +250,27 @@ sampler.univ <- function(data, r, where, type, formula, method, yname, k,
   imputes[!cc] <- NA
 
   args <- c(list(y = y, ry = ry, x = x, wy = wy, type = type), user, list(...))
-  imputes[cc] <- do.call(f, args = args)
+
+  tryCatch(
+    expr = {
+      imputes[cc] <- do.call(f, args = args)
+    },
+    error = function(e) {
+      saveRDS(
+        list(
+          args = args,
+          method = method,
+          e = e$message
+        ),
+        file = paste0(
+          "./",
+          format(Sys.time(), "%Y%m%d-%H%M%S"),
+          "-mice-call-",
+          method,
+          "-error.rds"
+        )
+      )
+    }
+  )
   imputes
 }

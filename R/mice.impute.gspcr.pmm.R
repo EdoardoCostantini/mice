@@ -91,16 +91,43 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     }
 
     # Train GSPCR --------------------------------------------------------------
-    gscpr_fit <- gspcr::cv_gspcr(
-        dv = dotyobs,
-        ivs = dotxobs,
-        fam = "gaussian",
-        thrs = thrs,
-        nthrs = nthrs,
-        npcs_range = npcs_range,
-        K = K,
-        fit_measure = fit_measure,
-        min_features = 1
+
+    tryCatch(
+        expr = {
+            # Train model to tune parameters
+            gscpr_fit <- gspcr::cv_gspcr(
+                dv = dotyobs,
+                ivs = dotxobs,
+                fam = "gaussian",
+                thrs = thrs,
+                nthrs = nthrs,
+                npcs_range = npcs_range,
+                K = K,
+                fit_measure = fit_measure,
+                min_features = 1
+            )
+        },
+        error = function(e) {
+            saveRDS(
+                list(
+                    dv = dotyobs,
+                    ivs = dotxobs,
+                    fam = "gaussian",
+                    thrs = thrs,
+                    nthrs = nthrs,
+                    npcs_range = npcs_range,
+                    K = K,
+                    fit_measure = fit_measure,
+                    min_features = 1,
+                    e = e$message
+                ),
+                file = paste0(
+                    "./",
+                    format(Sys.time(), "%Y%m%d-%H%M%S"),
+                    "-mice-call-gspcr-pmm-error-cv.rds"
+                )
+            )
+        }
     )
 
     # Estimate GSPCR -----------------------------------------------------------
