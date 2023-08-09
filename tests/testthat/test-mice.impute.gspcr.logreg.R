@@ -39,6 +39,10 @@ testthat::expect_equal(length(imps_t1), sum(wy))
 # Factor as right levels
 testthat::expect_equal(levels(imps_t1), levels(y))
 
+# Same output shape as regular logreg
+imps_logreg <- mice.impute.logreg(y = y, ry = ry, x = x)
+testthat::expect_true(class(imps_logreg) == class(imps_t1))
+
 # Test 2: Perfect prediction ---------------------------------------------------
 
 set.seed(20042)

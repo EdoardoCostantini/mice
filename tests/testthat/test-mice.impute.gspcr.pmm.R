@@ -74,5 +74,5 @@ ry_3 <- !is.na(y_3)
 # Run imputation
 imps <- mice.impute.gspcr.pmm(y = y_3, ry = ry_3, x = x_3)
 
-# Test is the same as observed values of input imputations as expected (perfect prediction handled within gspcr)
+# Test is the same as observed values of input imputations as expected
 testthat::expect_equal(imps, y_3[ry_3])
