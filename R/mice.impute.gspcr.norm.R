@@ -119,5 +119,5 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
   imputes <- y_hat + rnorm(sum(wy)) * sigma
 
   # Return imputations
-  return(imputes)
+  return(matrix(imputes, ncol = 1))
 }
