@@ -14,7 +14,7 @@ mice.impute.gspcr.norm(
   thrs = "PR2",
   fit_measure = "BIC",
   nthrs = 10,
-  npcs_range = 1:5,
+  npcs_range = 1:3,
   K = 1,
   ...
 )
