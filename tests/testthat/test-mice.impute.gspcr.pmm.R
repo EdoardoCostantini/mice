@@ -76,3 +76,20 @@ imps <- mice.impute.gspcr.pmm(y = y_3, ry = ry_3, x = x_3)
 
 # Test is the same as observed values of input imputations as expected
 testthat::expect_equal(imps, y_3[ry_3])
+
+# Test 6: Works with orderd factors as regular pmm -----------------------------
+
+# Prepare data
+x <- GSPCRexdata$X$cont
+y <- GSPCRexdata$y$ord
+y[sample(1:length(y), length(y) * .1)] <- NA
+ry <- !is.na(y)
+
+# Run imputation
+imps_gspcr <- mice.impute.gspcr.pmm(y = y, ry = ry, x = x)
+
+# Run imputation with regular PMM
+imps_pmm <- mice.impute.pmm(y = y, ry = ry, x = x)
+
+# Test is the same as observed values of input imputations as expected
+testthat::expect_equal(class(imps_gspcr), class(imps_pmm))

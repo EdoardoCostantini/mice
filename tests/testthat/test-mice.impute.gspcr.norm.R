@@ -24,29 +24,8 @@ wy <- !ry
 # Use univariate imputation model
 imps_t1 <- mice.impute.gspcr.norm(y, ry, x)
 
-# Test 2: Categorical predictors -----------------------------------------------
+# Use standard norm
+imps_norm <- mice.impute.norm(y, ry, x = obtain.design(x)[, -1])
 
-# Define the test context
-context("mice.impute.gspcr.norm: categorical predictors")
-
-# Define an example dataset
-x <- iris[, -1]
-
-# Create an additional binary variable
-x[, 1] <- factor(x[, 1] < mean(x[, 1]), labels = c("Y", "N"))
-
-# define an example dependent variable
-y <- iris[, 1]
-
-# make missingness
-y[sample(1:nrow(iris), nrow(iris) * .3)] <- NA
-
-# Define response indicator
-ry <- !is.na(y)
-
-# Define missingness indicator
-wy <- !ry
-
-# Use univariate imputation model
-imps_t2 <- mice.impute.gspcr.norm(y, ry, x)
-
+# Returns same object type
+testthat::expect_equal(class(imps_t1), class(imps_norm))
