@@ -151,7 +151,27 @@ sampler <- function(data, m, ignore, where, imp, blocks, method,
           for (j in blocks[[h]]) {
             if (!is.factor(data[, j])) {
               chainVar[j, k2, ] <- apply(imp[[j]], 2L, var, na.rm = TRUE)
-              chainMean[j, k2, ] <- colMeans(as.matrix(imp[[j]]), na.rm = TRUE)
+              tryCatch(
+                expr = {
+                  # Train model to tune parameters
+                  chainMean[j, k2, ] <- colMeans(as.matrix(imp[[j]]), na.rm = TRUE)
+                },
+                error = function(e) {
+                  saveRDS(
+                    list(
+                      data = data,
+                      imp = imp,
+                      j = j,
+                      e = e$message
+                    ),
+                    file = paste0(
+                      "./",
+                      format(Sys.time(), "%Y%m%d-%H%M%S"),
+                      "-mice-call-gspcr-error-colMeans.rds"
+                    )
+                  )
+                }
+              )
             }
             if (is.factor(data[, j])) {
               for (mm in seq_len(m)) {
@@ -240,7 +260,7 @@ sampler.univ <- function(data, r, where, type, formula, method, yname, k,
   }
 
   # If the imputation method is a gspcr method, provide the updated data matrix in original data.frame format
-  if(grepl("gspcr", method)){
+  if (grepl("gspcr", method)) {
     x <- data[, -which(colnames(data) == j), drop = FALSE]
   }
 
