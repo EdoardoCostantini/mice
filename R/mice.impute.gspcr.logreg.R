@@ -155,7 +155,7 @@ mice.impute.gspcr.logreg <- function(y, ry, x, wy = NULL,
                 file = paste0(
                     "./",
                     format(Sys.time(), "%Y%m%d-%H%M%S"),
-                    "-mice-call-gspcr-logreg-error-est.rds"
+                    "-mice-call-gspcr-logreg-error-pred.rds"
                 )
             )
         }

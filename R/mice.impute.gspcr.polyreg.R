@@ -58,28 +58,109 @@ mice.impute.gspcr.polyreg <- function(y, ry, x, wy = NULL,
 
     # GSPCR --------------------------------------------------------------------
 
-    # Train model to tune parameters
-    gscpr_fit <- gspcr::cv_gspcr(
-        dv = dotyobs,
-        ivs = dotxobs,
-        fam = "baseline",
-        thrs = thrs,
-        nthrs = nthrs,
-        npcs_range = npcs_range,
-        K = K,
-        fit_measure = fit_measure,
-        min_features = 1
+    tryCatch(
+        expr = {
+            # Train model to tune parameters
+            gscpr_fit <- gspcr::cv_gspcr(
+                dv = dotyobs,
+                ivs = dotxobs,
+                fam = "baseline",
+                thrs = thrs,
+                nthrs = nthrs,
+                npcs_range = npcs_range,
+                K = K,
+                fit_measure = fit_measure,
+                min_features = 1
+            )
+        },
+        error = function(e) {
+            saveRDS(
+                list(
+                    dv = dotyobs,
+                    ivs = dotxobs,
+                    fam = "baseline",
+                    thrs = thrs,
+                    nthrs = nthrs,
+                    npcs_range = npcs_range,
+                    K = K,
+                    fit_measure = fit_measure,
+                    min_features = 1,
+                    e = e$message
+                ),
+                file = paste0(
+                    "./",
+                    format(Sys.time(), "%Y%m%d-%H%M%S"),
+                    "-mice-call-gspcr-polyreg-error-cv.rds"
+                )
+            )
+        }
     )
 
     # Estimate model with tuned parameters
-    gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+    tryCatch(
+        expr = {
+            # Train model to tune parameters
+            gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+        },
+        error = function(e) {
+            saveRDS(
+                list(
+                    dv = dotyobs,
+                    ivs = dotxobs,
+                    fam = "baseline",
+                    thrs = thrs,
+                    nthrs = nthrs,
+                    npcs_range = npcs_range,
+                    K = K,
+                    fit_measure = fit_measure,
+                    min_features = 1,
+                    gscpr_fit = gscpr_fit,
+                    e = e$message
+                ),
+                file = paste0(
+                    "./",
+                    format(Sys.time(), "%Y%m%d-%H%M%S"),
+                    "-mice-call-gspcr-polyreg-error-est.rds"
+                )
+            )
+        }
+    )
 
     # Obtain imputations -------------------------------------------------------
 
     # Obtain predictions
-    post <- predict(
-        object = gspcr_est,
-        newdata = x[!ry, ]
+    tryCatch(
+        expr = {
+            post <- predict(
+                object = gspcr_est,
+                newdata = x[!ry, ]
+            )
+        },
+        error = function(e) {
+            saveRDS(
+                list(
+                    dv = dotyobs,
+                    ivs = dotxobs,
+                    fam = "binomial",
+                    thrs = thrs,
+                    nthrs = nthrs,
+                    npcs_range = npcs_range,
+                    K = K,
+                    fit_measure = fit_measure,
+                    min_features = 1,
+                    gscpr_fit = gscpr_fit,
+                    x = x,
+                    ry = ry,
+                    gspcr_est = gspcr_est,
+                    e = e$message
+                ),
+                file = paste0(
+                    "./",
+                    format(Sys.time(), "%Y%m%d-%H%M%S"),
+                    "-mice-call-gspcr-polyref-error-pred.rds"
+                )
+            )
+        }
     )
 
     # Reshape as matrix if there was a single value

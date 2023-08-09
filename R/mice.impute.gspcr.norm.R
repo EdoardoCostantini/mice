@@ -86,25 +86,110 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
   dotyobs <- y[ry][s]
 
   # Train GSPCR ----------------------------------------------------------------
-  gscpr_fit <- gspcr::cv_gspcr(
-    dv = dotyobs,
-    ivs = dotxobs,
-    fam = "gaussian",
-    thrs = thrs,
-    nthrs = nthrs,
-    npcs_range = npcs_range,
-    K = K,
-    fit_measure = fit_measure,
-    min_features = 1
+
+  tryCatch(
+    expr = {
+      # Train model to tune parameters
+      gscpr_fit <- gspcr::cv_gspcr(
+        dv = dotyobs,
+        ivs = dotxobs,
+        fam = "gaussian",
+        thrs = thrs,
+        nthrs = nthrs,
+        npcs_range = npcs_range,
+        K = K,
+        fit_measure = fit_measure,
+        min_features = 1
+      )
+    },
+    error = function(e) {
+      saveRDS(
+        list(
+          dv = dotyobs,
+          ivs = dotxobs,
+          fam = "gaussian",
+          thrs = thrs,
+          nthrs = nthrs,
+          npcs_range = npcs_range,
+          K = K,
+          fit_measure = fit_measure,
+          min_features = 1,
+          e = e$message
+        ),
+        file = paste0(
+          "./",
+          format(Sys.time(), "%Y%m%d-%H%M%S"),
+          "-mice-call-gspcr-norm-error-cv.rds"
+        )
+      )
+    }
   )
 
   # Estimate GSPCR -------------------------------------------------------------
-  gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+
+  tryCatch(
+    expr = {
+      # Train model to tune parameters
+      gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+    },
+    error = function(e) {
+      saveRDS(
+        list(
+          dv = dotyobs,
+          ivs = dotxobs,
+          fam = "gaussian",
+          thrs = thrs,
+          nthrs = nthrs,
+          npcs_range = npcs_range,
+          K = K,
+          fit_measure = fit_measure,
+          min_features = 1,
+          gscpr_fit = gscpr_fit,
+          e = e$message
+        ),
+        file = paste0(
+          "./",
+          format(Sys.time(), "%Y%m%d-%H%M%S"),
+          "-mice-call-gspcr-norm-error-est.rds"
+        )
+      )
+    }
+  )
 
   # Obtain imputations ---------------------------------------------------------
 
+  # Obtain predictions
+  tryCatch(
+    expr = {
+      y_hat <- predict(object = gspcr_est)
+    },
+    error = function(e) {
+      saveRDS(
+        list(
+          dv = dotyobs,
+          ivs = dotxobs,
+          fam = "binomial",
+          thrs = thrs,
+          nthrs = nthrs,
+          npcs_range = npcs_range,
+          K = K,
+          fit_measure = fit_measure,
+          min_features = 1,
+          gscpr_fit = gscpr_fit,
+          gspcr_est = gspcr_est,
+          e = e$message
+        ),
+        file = paste0(
+          "./",
+          format(Sys.time(), "%Y%m%d-%H%M%S"),
+          "-mice-call-gspcr-norm-error-pred.rds"
+        )
+      )
+    }
+  )
+
   # Compute residuals
-  dotyobs_res <- dotyobs - predict(object = gspcr_est)
+  dotyobs_res <- dotyobs - y_hat
 
   # Compute error variance
   sigma <- sqrt(sum(dotyobs_res^2) / (n1 - length(coef(gspcr_est$glm_fit))))

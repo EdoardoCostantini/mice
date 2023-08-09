@@ -131,25 +131,114 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     )
 
     # Estimate GSPCR -----------------------------------------------------------
-    gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+
+    tryCatch(
+        expr = {
+            # Train model to tune parameters
+            gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+        },
+        error = function(e) {
+            saveRDS(
+                list(
+                    dv = dotyobs,
+                    ivs = dotxobs,
+                    fam = "gaussian",
+                    thrs = thrs,
+                    nthrs = nthrs,
+                    npcs_range = npcs_range,
+                    K = K,
+                    fit_measure = fit_measure,
+                    min_features = 1,
+                    gscpr_fit = gscpr_fit,
+                    e = e$message
+                ),
+                file = paste0(
+                    "./",
+                    format(Sys.time(), "%Y%m%d-%H%M%S"),
+                    "-mice-call-gspcr-pmm-error-est.rds"
+                )
+            )
+        }
+    )
 
     # Obtain imputations -------------------------------------------------------
 
-    # Obtain predictions for the observed values of y
-    y_hat_obs <- predict(
-        object = gspcr_est,
-        newdata = x[ry, ]
+    # Obtain predictions
+    tryCatch(
+        expr = {
+            # Obtain predictions for the observed values of y
+            y_hat_obs <- predict(
+                object = gspcr_est,
+                newdata = x[ry, ]
+            )
+        },
+        error = function(e) {
+            saveRDS(
+                list(
+                    dv = dotyobs,
+                    ivs = dotxobs,
+                    fam = "binomial",
+                    thrs = thrs,
+                    nthrs = nthrs,
+                    npcs_range = npcs_range,
+                    K = K,
+                    fit_measure = fit_measure,
+                    min_features = 1,
+                    gscpr_fit = gscpr_fit,
+                    gspcr_est = gspcr_est,
+                    x = x,
+                    ry = ry,
+                    e = e$message
+                ),
+                file = paste0(
+                    "./",
+                    format(Sys.time(), "%Y%m%d-%H%M%S"),
+                    "-mice-call-gspcr-logreg-error-pred-ry.rds"
+                )
+            )
+        }
     )
 
-    # Obtain predictions for the unobserved values of y
-    if(sum(wy) > 0){
-        y_hat_mis <- predict(
-            object = gspcr_est,
-            newdata = x[wy, ]
-        )
-    } else {
-        y_hat_mis <- matrix(nrow = 0, ncol = 1)
-    }
+    # Obtain predictions
+    tryCatch(
+        expr = {
+            # Obtain predictions for the observed values of y
+            # Obtain predictions for the unobserved values of y
+            if (sum(wy) > 0) {
+                y_hat_mis <- predict(
+                    object = gspcr_est,
+                    newdata = x[wy, ]
+                )
+            } else {
+                y_hat_mis <- matrix(nrow = 0, ncol = 1)
+            }
+        },
+        error = function(e) {
+            saveRDS(
+                list(
+                    dv = dotyobs,
+                    ivs = dotxobs,
+                    fam = "binomial",
+                    thrs = thrs,
+                    nthrs = nthrs,
+                    npcs_range = npcs_range,
+                    K = K,
+                    fit_measure = fit_measure,
+                    min_features = 1,
+                    gscpr_fit = gscpr_fit,
+                    gspcr_est = gspcr_est,
+                    x = x,
+                    wy = wy,
+                    e = e$message
+                ),
+                file = paste0(
+                    "./",
+                    format(Sys.time(), "%Y%m%d-%H%M%S"),
+                    "-mice-call-gspcr-logreg-error-pred-wy.rds"
+                )
+            )
+        }
+    )
 
     # Use matcher
     idx <- matchindex(y_hat_obs, y_hat_mis, donors)
