@@ -28,7 +28,7 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
                                    thrs = "PR2",
                                    fit_measure = "BIC",
                                    nthrs = 10,
-                                   npcs_range = 1:3,
+                                   npcs_range = 1:5,
                                    K = 1,
                                    ...) {
     # Set up -------------------------------------------------------------------
