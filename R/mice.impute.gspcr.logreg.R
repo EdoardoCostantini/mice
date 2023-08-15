@@ -72,7 +72,13 @@ mice.impute.gspcr.logreg <- function(y, ry, x, wy = NULL,
     )
 
     # Estimate model with tuned parameters
-    gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+    gspcr_est <- gspcr::est_gspcr(
+        dv = dotyobs,
+        ivs = dotxobs,
+        fam = "binomial",
+        active_set = names(which(gscpr_fit$pred_map[, gscpr_fit$sol_table[1, "thr_number"]])),
+        ndim = gscpr_fit$sol_table[1, "Q"]
+    )
 
     # Obtain imputations -------------------------------------------------------
 
