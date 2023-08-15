@@ -24,7 +24,7 @@
 #' Bair, E., Hastie, T., Paul, D., & Tibshirani, R. (2006). Prediction by
 #' supervised principal components. Journal of the American Statistical
 #' Association, 101(473), 119-137.
-#' 
+#'
 #' Heitjan, D. F., & Little, R. J. (1991). Multiple imputation for the fatal accident reporting system. Journal of the Royal Statistical Society Series C: Applied Statistics, 40(1), 13-29.
 #'
 #' @family univariate imputation functions
@@ -39,14 +39,13 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
                                   donors = 5L,
                                   exclude = -99999999,
                                   ...) {
-
     # Prepare data in pmm fashion ----------------------------------------------
 
     # Create an id vector for exclusion
     id.ex <- !ry | !y %in% exclude
 
     # leave out the excluded vector y's
-    y <- y[id.ex] 
+    y <- y[id.ex]
 
     # allow for one-dimensional x-space
     if (!is.null(dim(x))) {
@@ -91,7 +90,6 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     }
 
     # Train GSPCR --------------------------------------------------------------
-
     tryCatch(
         expr = {
             # Train model to tune parameters
@@ -104,7 +102,8 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
                 npcs_range = npcs_range,
                 K = K,
                 fit_measure = fit_measure,
-                min_features = 1
+                min_features = 1,
+                save_call = FALSE
             )
         },
         error = function(e) {
@@ -135,7 +134,13 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     tryCatch(
         expr = {
             # Train model to tune parameters
-            gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+            gspcr_est <- gspcr::est_gspcr(
+                dv = dotyobs,
+                ivs = dotxobs,
+                fam = "gaussian",
+                active_set = gscpr_fit$solution$standard$active_set,
+                ndim = gscpr_fit$solution$standard$Q
+            )
         },
         error = function(e) {
             saveRDS(

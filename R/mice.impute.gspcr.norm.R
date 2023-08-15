@@ -34,7 +34,7 @@
 #' For every active set, all requested PCs are computed and used to predict the dependent variable. If the sets npcs to 1, 3, and 5, then the dependent variable is regressed on 1 component, then on 1 to 3 components and finally on 1 to 5 components.
 #' The combination of active set and npcs that returns the optimal value of a given fit measure is then selected.
 #' This selection of the threshold value \eqn{\theta_t} and the number of components Q can be done through K-fold cross-validation by setting the value of the folds to anything larger than 1.
-#' 
+#'
 #' For details on the admissible values for \code{thrs}, \code{npcs_range}, and \code{fit_measure} consult the help file for the underlying gspcr engine [gspcr::cv_gspcr()].
 #'
 #' The user can specify a \code{predictorMatrix} in the \code{mice} call
@@ -44,7 +44,7 @@
 #' However, a non-zero entry does not guarantee the variable will be used,
 #' as this decision is ultimately made based on the k-fold cross-validation
 #' procedure.
-#' 
+#'
 #' When using any gspcr-based method, it is recommended to set the following arguments in the mice call
 #' - \code{eps = 0}, to bypasses \code{remove.lindep()}
 #' - \code{threshold = 1L}, to bypass collinearity checks
@@ -86,7 +86,6 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
   dotyobs <- y[ry][s]
 
   # Train GSPCR ----------------------------------------------------------------
-
   tryCatch(
     expr = {
       # Train model to tune parameters
@@ -99,7 +98,8 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
         npcs_range = npcs_range,
         K = K,
         fit_measure = fit_measure,
-        min_features = 1
+        min_features = 1,
+        save_call = FALSE
       )
     },
     error = function(e) {
@@ -130,7 +130,13 @@ mice.impute.gspcr.norm <- function(y, ry, x, wy = NULL,
   tryCatch(
     expr = {
       # Train model to tune parameters
-      gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+      gspcr_est <- gspcr::est_gspcr(
+        dv = dotyobs,
+        ivs = dotxobs,
+        fam = "gaussian",
+        active_set = gscpr_fit$solution$standard$active_set,
+        ndim = gscpr_fit$solution$standard$Q
+      )
     },
     error = function(e) {
       saveRDS(

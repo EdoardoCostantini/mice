@@ -57,7 +57,6 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
     }
 
     # GSPCR --------------------------------------------------------------------
-
     tryCatch(
         expr = {
             # Train model to tune parameters
@@ -70,7 +69,8 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
                 npcs_range = npcs_range,
                 K = K,
                 fit_measure = fit_measure,
-                min_features = 1
+                min_features = 1,
+                save_call = FALSE
             )
         },
         error = function(e) {
@@ -101,7 +101,13 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
     tryCatch(
         expr = {
             # Train model to tune parameters
-            gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+            gspcr_est <- gspcr::est_gspcr(
+                dv = dotyobs,
+                ivs = dotxobs,
+                fam = "cumulative",
+                active_set = gscpr_fit$solution$standard$active_set,
+                ndim = gscpr_fit$solution$standard$Q
+            )
         },
         error = function(e) {
             saveRDS(
@@ -129,40 +135,40 @@ mice.impute.gspcr.polr <- function(y, ry, x, wy = NULL,
 
     # Obtain imputations -------------------------------------------------------
 
-      # Obtain predictions
-      tryCatch(
-          expr = {
-              post <- predict(
-                  object = gspcr_est,
-                  newdata = x[!ry, ]
-              )
-          },
-          error = function(e) {
-              saveRDS(
-                  list(
-                      dv = dotyobs,
-                      ivs = dotxobs,
-                      fam = "binomial",
-                      thrs = thrs,
-                      nthrs = nthrs,
-                      npcs_range = npcs_range,
-                      K = K,
-                      fit_measure = fit_measure,
-                      min_features = 1,
-                      gscpr_fit = gscpr_fit,
-                      x = x,
-                      ry = ry,
-                      gspcr_est = gspcr_est,
-                      e = e$message
-                  ),
-                  file = paste0(
-                      "./",
-                      format(Sys.time(), "%Y%m%d-%H%M%S"),
-                      "-mice-call-gspcr-polr-error-pred.rds"
-                  )
-              )
-          }
-      )
+    # Obtain predictions
+    tryCatch(
+        expr = {
+            post <- predict(
+                object = gspcr_est,
+                newdata = x[!ry, ]
+            )
+        },
+        error = function(e) {
+            saveRDS(
+                list(
+                    dv = dotyobs,
+                    ivs = dotxobs,
+                    fam = "binomial",
+                    thrs = thrs,
+                    nthrs = nthrs,
+                    npcs_range = npcs_range,
+                    K = K,
+                    fit_measure = fit_measure,
+                    min_features = 1,
+                    gscpr_fit = gscpr_fit,
+                    x = x,
+                    ry = ry,
+                    gspcr_est = gspcr_est,
+                    e = e$message
+                ),
+                file = paste0(
+                    "./",
+                    format(Sys.time(), "%Y%m%d-%H%M%S"),
+                    "-mice-call-gspcr-polr-error-pred.rds"
+                )
+            )
+        }
+    )
 
     # Reshape as matrix if there was a single value
     if (sum(wy) == 1) {

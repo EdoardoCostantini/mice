@@ -70,7 +70,8 @@ mice.impute.gspcr.logreg <- function(y, ry, x, wy = NULL,
                 npcs_range = npcs_range,
                 K = K,
                 fit_measure = fit_measure,
-                min_features = 1
+                min_features = 1,
+                save_call = FALSE
             )
         },
         error = function(e) {
@@ -100,7 +101,13 @@ mice.impute.gspcr.logreg <- function(y, ry, x, wy = NULL,
     tryCatch(
         expr = {
             # Train model to tune parameters
-            gspcr_est <- gspcr::est_gspcr(gscpr_fit)
+            gspcr_est <- gspcr::est_gspcr(
+                dv = dotyobs,
+                ivs = dotxobs,
+                fam = "binomial",
+                active_set = gscpr_fit$solution$standard$active_set,
+                ndim = gscpr_fit$solution$standard$Q
+            )
         },
         error = function(e) {
             saveRDS(
