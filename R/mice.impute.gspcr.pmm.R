@@ -100,7 +100,8 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
         npcs_range = npcs_range,
         K = K,
         fit_measure = fit_measure,
-        min_features = 1
+        min_features = 1,
+        save_call = FALSE
     )
 
     # Estimate GSPCR -----------------------------------------------------------
@@ -108,8 +109,8 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
         dv = dotyobs,
         ivs = dotxobs,
         fam = "gaussian",
-        active_set = names(which(gscpr_fit$pred_map[, gscpr_fit$sol_table[1, "thr_number"]])),
-        ndim = gscpr_fit$sol_table[1, "Q"]
+        active_set = gscpr_fit$solution$standard$active_set,
+        ndim = gscpr_fit$solution$standard$Q
     )
 
     # Obtain imputations -------------------------------------------------------
