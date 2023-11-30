@@ -18,12 +18,23 @@ version <- function(pkg = "mice") {
 .onLoad <- function(libname, pkgname) {
   warning(
     paste0(
-      "\n",
       version(), " was loaded.\n\n",
-      "This is an experimental version of the mice package developed by Edoardo Costantini as an unofficial fork to the main package. I created this version to demonstrate the potential use of generalised supervised principal components as a univariate imputation method in mice. I created this version in autonomy from maintainers and other contributors of the CRAN version of the `mice` R package. \n\n", 
+      "This is an experimental version of the `mice` R package
+developed by Edoardo Costantini as an unofficial fork to the 
+main package. You can find the code base by following this link:
+
+https://github.com/EdoardoCostantini/mice/tree/develop-gspcr
+
+I created this version to demonstrate the potential use of 
+generalised supervised principal components as a univariate
+imputation method in `mice`.\n\n",
       "IMPORTANT!",
       "\n\n",
-      "If you encounter any issues using it please contact me e.costantini@tilburguniversity.edu."
+      "I created this version in autonomy from maintainers and 
+other contributors of the CRAN version of the `mice` R package.
+If you encounter any issues using it please contact me at: 
+
+e.costantini@tilburguniversity.edu."
     ),
     call. = FALSE
   )
