@@ -32,9 +32,10 @@ imputation method in `mice`.\n\n",
       "\n\n",
       "I created this version in autonomy from maintainers and 
 other contributors of the CRAN version of the `mice` R package.
-If you encounter any issues using it please contact me at: 
+If you encounter any issues using it please open an issue on 
+the GitHub repository hosting the code for the forked project:
 
-e.costantini@tilburguniversity.edu."
+https://github.com/EdoardoCostantini/mice/issues."
     ),
     call. = FALSE
   )
