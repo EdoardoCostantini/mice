@@ -35,7 +35,7 @@ other contributors of the CRAN version of the `mice` R package.
 If you encounter any issues using it please open an issue on 
 the GitHub repository hosting the code for the forked project:
 
-https://github.com/EdoardoCostantini/mice/issues."
+https://github.com/EdoardoCostantini/mice/issues"
     ),
     call. = FALSE
   )
