@@ -24,7 +24,7 @@
 #' Bair, E., Hastie, T., Paul, D., & Tibshirani, R. (2006). Prediction by
 #' supervised principal components. Journal of the American Statistical
 #' Association, 101(473), 119-137.
-#' 
+#'
 #' Heitjan, D. F., & Little, R. J. (1991). Multiple imputation for the fatal accident reporting system. Journal of the Royal Statistical Society Series C: Applied Statistics, 40(1), 13-29.
 #'
 #' @family univariate imputation functions
@@ -38,15 +38,15 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
                                   K = 1,
                                   donors = 5L,
                                   exclude = -99999999,
+                                  use.matcher = FALSE,
                                   ...) {
-
     # Prepare data in pmm fashion ----------------------------------------------
 
     # Create an id vector for exclusion
     id.ex <- !ry | !y %in% exclude
 
     # leave out the excluded vector y's
-    y <- y[id.ex] 
+    y <- y[id.ex]
 
     # allow for one-dimensional x-space
     if (!is.null(dim(x))) {
@@ -122,7 +122,7 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     )
 
     # Obtain predictions for the unobserved values of y
-    if(sum(wy) > 0){
+    if (sum(wy) > 0) {
         y_hat_mis <- predict(
             object = gspcr_est,
             newdata = x[wy, ]
@@ -132,7 +132,11 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     }
 
     # Use matcher
-    idx <- matchindex(y_hat_obs, y_hat_mis, donors)
+    if (use.matcher) {
+        idx <- matcher(y_hat_obs, y_hat_mis, donors)
+    } else {
+        idx <- matchindex(round(y_hat_obs, 3), round(y_hat_mis, 3), donors)
+    }
 
     # Define imputations
     imputes <- y[ry][idx]
