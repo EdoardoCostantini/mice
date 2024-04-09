@@ -135,7 +135,7 @@ mice.impute.gspcr.pmm <- function(y, ry, x, wy = NULL,
     if (use.matcher) {
         idx <- matcher(y_hat_obs, y_hat_mis, donors)
     } else {
-        idx <- matchindex(round(y_hat_obs, 3), round(y_hat_mis, 3), donors)
+        idx <- matchindex(y_hat_obs, y_hat_mis, donors)
     }
 
     # Define imputations

@@ -17,6 +17,7 @@ mice.impute.gspcr.pmm(
   K = 1,
   donors = 5L,
   exclude = -99999999,
+  use.matcher = FALSE,
   ...
 )
 }
@@ -47,6 +48,13 @@ indicates locations in \code{y} for which imputations are created.}
 \item{donors}{the size of the donor pool among which a draw is made (default is \code{5L}).}
 
 \item{exclude}{Value or vector of values to exclude from the imputation donor pool in \code{y}}
+
+\item{use.matcher}{Logical. Set \code{use.matcher = TRUE} to specify
+the C function \code{matcher()}, the now deprecated matching function that
+was default in versions
+\code{2.22} (June 2014) to \code{3.11.7} (Oct 2020). Since version \code{3.12.0}
+\code{mice()} uses the much faster \code{matchindex} C function. Use
+the deprecated \code{matcher} function only for exact reproduction.}
 
 \item{...}{Other named arguments.}
 }
